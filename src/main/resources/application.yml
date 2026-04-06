@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: SpringAIRobot
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: deepseek-r1:8b
+          temperature: 0.7
