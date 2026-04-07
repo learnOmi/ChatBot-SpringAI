@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16  # 使用 pgvector 官方镜像，版本为 PostgreSQL 16
+    container_name: pgvector       # 容器名称设置为 pgvector
+    environment:                  # 设置环境变量
+      POSTGRES_DB: vectordb       # 数据库名称设置为 vectordb
+      POSTGRES_USER: postgres     # 用户名设置为 postgres
+      POSTGRES_PASSWORD: postgres # 密码设置为 postgres
+    ports:
+      - "5432:5432"               # 端口映射，将容器的 5432 端口映射到主机的 5432 端口
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # 数据卷挂载，用于持久化数据
+    # 可选：自动创建 vector 扩展（推荐）
+    command: >                    # 自定义启动命令
+      bash -c "
+        docker-entrypoint.sh postgres &  # 启动 PostgreSQL 服务
+        sleep 5 &&                        # 等待 5 秒确保服务完全启动
+        psql -U postgres -d vectordb -c 'CREATE EXTENSION IF NOT EXISTS vector;' &&  # 创建 vector 扩展
+        wait                              # 等待前台进程结束
+      "
+
+volumes:
+  postgres_data:   # 这一行绝对不能少！定义数据卷，用于持久化存储数据库数据

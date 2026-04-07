@@ -1,10 +1,43 @@
+# Spring应用程序配置
 spring:
   application:
+    # 应用名称
     name: SpringAIRobot
+  # 数据源配置
+  datasource:
+    # PostgreSQL数据库连接URL
+    url: jdbc:postgresql://localhost:5432/vectordb
+    # 数据库用户名
+    username: postgres
+    # 数据库密码
+    password: postgres
+    # JDBC驱动类名
+    driver-class-name: org.postgresql.Driver
+  # AI服务配置
   ai:
+    # Ollama AI服务配置
     ollama:
+      # Ollama服务基础URL
       base-url: http://localhost:11434
+      # 嵌入模型配置
+      embedding:
+        options:
+          # 使用的嵌入模型名称; 必须预先pull
+          model: nomic-embed-text
+      # 聊天模型配置
       chat:
         options:
+          # 使用的聊天模型名称
           model: deepseek-r1:8b
+          # 温度参数，控制输出的随机性
           temperature: 0.7
+    # 向量存储配置
+    vectorstore:
+      pgvector:
+        # 索引类型，HNSW（Hierarchical Navigable Small World）是一种高效的近似最近邻搜索算法
+        index-type: HNSW
+        # 距离类型，余弦距离用于计算向量之间的相似度
+        distance-type: COSINE_DISTANCE
+        # 向量维度，取决于使用的嵌入模型
+        dimensions: 768
+        initialize-schema: true   # 自动建表（有时不生效，可手动）

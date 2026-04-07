@@ -24,4 +24,9 @@ public class ChatController {
     public Flux<String> streamChat(@RequestParam String message) {
         return chatService.chatStream(message);
     }
+
+    @GetMapping("/rag")
+    public String ragChat(@RequestParam String message) {
+        return chatService.ragChat(message);
+    }
 }
