@@ -19,8 +19,8 @@ public class ChatController {
         return chatService.chat(message);
     }
 
-    // 流式接口，返回Server-Sent Events类型的数据
-    @GetMapping(value = "/stream", produces = "text/event-stream")
+    // 直接返回HTML
+    @GetMapping(value = "/stream", produces = "text/html; charset=UTF-8")
     public Flux<String> streamChat(@RequestParam String message) {
         return chatService.chatStream(message);
     }
@@ -28,5 +28,10 @@ public class ChatController {
     @GetMapping("/rag")
     public String ragChat(@RequestParam String message) {
         return chatService.ragChat(message);
+    }
+
+    @GetMapping(value = "/rag/stream", produces = "text/html; charset=UTF-8")
+    public Flux<String> ragChatStream(@RequestParam String message) {
+        return chatService.ragChatStream(message);
     }
 }
