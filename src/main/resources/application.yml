@@ -49,3 +49,7 @@ spring:
         # 向量维度，取决于使用的嵌入模型
         dimensions: 768
         initialize-schema: true   # 自动建表（有时不生效，可手动）
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG
+    org.springframework.ai.chat.service: DEBUG

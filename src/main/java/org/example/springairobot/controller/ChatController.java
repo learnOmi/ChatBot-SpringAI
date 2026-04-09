@@ -23,29 +23,23 @@ public class ChatController {
     // 同步接口
     @GetMapping("/sync")
     public String syncChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            sessionId = conversationService.createSession(null);
-        }
         return chatService.chat(sessionId, message);
     }
 
     // 直接返回HTML
     @GetMapping(value = "/stream", produces = "text/html; charset=UTF-8")
-    public Flux<String> streamChat(@RequestParam String message) {
-        return chatService.chatStream(message);
+    public Flux<String> streamChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
+        return chatService.chatStream(sessionId, message);
     }
 
     @GetMapping("/rag")
     public String ragChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            sessionId = conversationService.createSession(null);
-        }
         return chatService.ragChat(sessionId, message);
     }
 
     @GetMapping(value = "/rag/stream", produces = "text/html; charset=UTF-8")
-    public Flux<String> ragChatStream(@RequestParam String message) {
-        return chatService.ragChatStream(message);
+    public Flux<String> ragChatStream(@RequestParam String message, @RequestParam(required = false) String sessionId) {
+        return chatService.ragChatStream(sessionId, message);
     }
 
     // 获取会话历史
