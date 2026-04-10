@@ -20,42 +20,71 @@ public class ChatService {
     }
 
     // 同步对话（记忆由 MessageChatMemoryAdvisor 自动管理）
+    // ==================== 普通对话 ====================
     public String chat(String sessionId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
-        return chatClient.prompt()
+
+        String assistantReply = chatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a.param("chat_memory_conversation_id", effectiveSessionId))
                 .call()
                 .content();
+
+        // 持久化完整历史
+        conversationService.savePair(effectiveSessionId, userMessage, assistantReply, null);
+        return assistantReply;
     }
 
-    // 流式对话
     public Flux<String> chatStream(String sessionId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+
+        // 用于累积流式响应的 StringBuilder
+        StringBuilder fullReplyBuilder = new StringBuilder();
+
         return chatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a.param("chat_memory_conversation_id", effectiveSessionId))
                 .stream()
-                .content();
+                .content()
+                .doOnNext(chunk -> fullReplyBuilder.append(chunk))
+                .doOnComplete(() -> {
+                    String fullReply = fullReplyBuilder.toString();
+                    conversationService.savePair(effectiveSessionId, userMessage, fullReply, null);
+                });
     }
 
-    // RAG 同步对话
+    // ==================== RAG 对话 ====================
     public String ragChat(String sessionId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
-        return ragChatClient.prompt()
+
+        String assistantReply = ragChatClient.prompt()
                 .user(userMessage)
-                .advisors(a -> a.param("chat_memory_conversation_id", effectiveSessionId))
+                .advisors(a -> a
+                        .param("chat_memory_conversation_id", effectiveSessionId)
+                        .param("sessionId", effectiveSessionId))
                 .call()
                 .content();
+
+        conversationService.savePair(effectiveSessionId, userMessage, assistantReply, null);
+        return assistantReply;
     }
 
-    // RAG 流式对话
     public Flux<String> ragChatStream(String sessionId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+
+        StringBuilder fullReplyBuilder = new StringBuilder();
+
         return ragChatClient.prompt()
                 .user(userMessage)
-                .advisors(a -> a.param("chat_memory_conversation_id", effectiveSessionId))
+                .advisors(a -> a
+                        .param("chat_memory_conversation_id", effectiveSessionId)
+                        .param("sessionId", effectiveSessionId))
                 .stream()
-                .content();
+                .content()
+                .doOnNext(chunk -> fullReplyBuilder.append(chunk))
+                .doOnComplete(() -> {
+                    String fullReply = fullReplyBuilder.toString();
+                    conversationService.savePair(effectiveSessionId, userMessage, fullReply, null);
+                });
     }
 }
