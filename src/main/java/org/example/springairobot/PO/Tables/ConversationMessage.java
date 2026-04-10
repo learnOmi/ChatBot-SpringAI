@@ -1,4 +1,4 @@
-package org.example.springairobot.PO;
+package org.example.springairobot.PO.Tables;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

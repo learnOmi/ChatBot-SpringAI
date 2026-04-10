@@ -2,8 +2,8 @@ package org.example.springairobot.service;
 
 import org.example.springairobot.DAO.ConversationMessageRepository;
 import org.example.springairobot.DAO.ConversationSessionRepository;
-import org.example.springairobot.PO.ConversationMessage;
-import org.example.springairobot.PO.ConversationSession;
+import org.example.springairobot.PO.Tables.ConversationMessage;
+import org.example.springairobot.PO.Tables.ConversationSession;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;

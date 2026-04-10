@@ -1,6 +1,6 @@
 package org.example.springairobot.DAO;
 
-import org.example.springairobot.PO.ConversationMessage;
+import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

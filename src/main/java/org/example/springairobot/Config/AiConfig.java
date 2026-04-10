@@ -1,5 +1,6 @@
 package org.example.springairobot.Config;
 
+import org.example.springairobot.RagOpt.ReRanker.OllamaReRankerDocumentPostProcessor;
 import org.example.springairobot.RagOpt.Retriever.MultiQueryDocumentRetrieverAdapter;
 import org.example.springairobot.RagOpt.Transformer.ContextualQueryTransformer;
 import org.example.springairobot.service.ConversationService;
@@ -7,6 +8,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.postretrieval.document.DocumentPostProcessor;
 import org.springframework.ai.rag.preretrieval.query.expansion.MultiQueryExpander;
 import org.springframework.ai.rag.preretrieval.query.transformation.QueryTransformer;
 import org.springframework.ai.rag.retrieval.search.DocumentRetriever;
@@ -22,10 +24,11 @@ public class AiConfig {
      * RAG 顾问（使用 RetrievalAugmentationAdvisor）
      */
     @Bean
-    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(QueryTransformer queryTransformer, DocumentRetriever multiQueryDocumentRetriever) {
+    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(QueryTransformer queryTransformer, DocumentRetriever multiQueryDocumentRetriever, DocumentPostProcessor ollamaReRanker) {
         return RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(multiQueryDocumentRetriever)
                 .queryTransformers(queryTransformer)
+                .documentPostProcessors(ollamaReRanker)
                 .build();
     }
 
@@ -78,6 +81,13 @@ public class AiConfig {
 
         // 3. 使用自定义适配器组装多查询检索器
         return new MultiQueryDocumentRetrieverAdapter(queryExpander, vectorRetriever);
+    }
+
+    // 利用DocumentPostProcessor实现的自定义轻量级ReRanker
+    @Bean
+    public DocumentPostProcessor ollamaReRanker(ChatClient.Builder chatClientBuilder) {
+        ChatClient.Builder clonedBuilder = chatClientBuilder.clone();
+        return new OllamaReRankerDocumentPostProcessor(clonedBuilder, 3);
     }
 
     /**

@@ -4,7 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.example.springairobot.DAO.KnowledgeBaseMetadataRepository;
-import org.example.springairobot.PO.KnowledgeBaseMetadata;
+import org.example.springairobot.PO.Tables.KnowledgeBaseMetadata;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.TextReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;

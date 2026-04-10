@@ -1,6 +1,6 @@
 package org.example.springairobot.DAO;
 
-import org.example.springairobot.PO.KnowledgeBaseMetadata;
+import org.example.springairobot.PO.Tables.KnowledgeBaseMetadata;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

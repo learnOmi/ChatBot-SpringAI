@@ -1,7 +1,7 @@
 package org.example.springairobot.controller;
 
-import org.example.springairobot.PO.ConversationMessage;
-import org.example.springairobot.PO.ConversationSession;
+import org.example.springairobot.PO.Tables.ConversationMessage;
+import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.ConversationService;
 import org.springframework.web.bind.annotation.*;
