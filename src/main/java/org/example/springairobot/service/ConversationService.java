@@ -78,6 +78,24 @@ public class ConversationService {
         saveMessage(sessionId, "assistant", assistantMessage, tokensUsed);
     }
 
+    /**
+     * 保存消息并返回持久化后的消息对象（用于获取自增ID）
+     */
+    public ConversationMessage saveMessageAndReturn(String sessionId, String role, String content, Integer tokensUsed) {
+        ConversationMessage msg = new ConversationMessage();
+        msg.setSessionId(sessionId);
+        msg.setRole(role);
+        msg.setContent(content);
+        msg.setTokensUsed(tokensUsed);
+        ConversationMessage saved = messageRepo.save(msg);
+
+        sessionRepo.findById(sessionId).ifPresent(session -> {
+            session.setUpdatedAt(LocalDateTime.now());
+            sessionRepo.save(session);
+        });
+        return saved;
+    }
+
     // 获取会话历史（用于构建对话上下文）
     public List<ConversationMessage> getHistory(String sessionId) {
         return messageRepo.findBySessionIdOrderByCreatedAtAsc(sessionId);

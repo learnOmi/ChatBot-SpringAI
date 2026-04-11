@@ -13,6 +13,10 @@ spring:
     password: postgres
     # JDBC驱动类名
     driver-class-name: org.postgresql.Driver
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect # 指定数据库方言为 PostgreSQL
     hibernate:
@@ -90,3 +94,7 @@ logging:
     org.springframework.ai.chat.client.advisor: DEBUG
     org.springframework.ai.chat.service: DEBUG
     org.springframework.ai.observation: DEBUG
+
+app:
+  upload:
+    dir: C:\Users\Administrator\Pictures

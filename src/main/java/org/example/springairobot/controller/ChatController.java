@@ -6,9 +6,12 @@ import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.ConversationService;
+import org.example.springairobot.service.VisionService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -16,10 +19,13 @@ import java.util.List;
 public class ChatController {
     private final ChatService chatService;
     private final ConversationService conversationService;
+    private final VisionService visionService;
 
-    public ChatController(ChatService chatService, ConversationService conversationService) {
+
+    public ChatController(ChatService chatService, ConversationService conversationService, VisionService visionService) {
         this.chatService = chatService;
         this.conversationService = conversationService;
+        this.visionService = visionService;
     }
 
     // 同步接口
@@ -90,5 +96,12 @@ public class ChatController {
     @PostMapping("/session")
     public String newSession(@RequestParam(required = false) String title) {
         return conversationService.createSession(title);
+    }
+
+    @PostMapping("/vision")
+    public String analyzeMedia(@RequestParam(required = false) String sessionId,
+                               @RequestParam String question,
+                               @RequestPart("image") MultipartFile imageFile) throws IOException {
+        return visionService.analyzeMedia(sessionId, question, imageFile);
     }
 }

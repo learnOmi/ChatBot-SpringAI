@@ -8,6 +8,7 @@ import org.example.springairobot.service.ConversationService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.postretrieval.document.DocumentPostProcessor;
 import org.springframework.ai.rag.preretrieval.query.expansion.MultiQueryExpander;
@@ -15,6 +16,7 @@ import org.springframework.ai.rag.preretrieval.query.transformation.QueryTransfo
 import org.springframework.ai.rag.retrieval.search.DocumentRetriever;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -150,6 +152,23 @@ public class AiConfig {
                                     RetrievalAugmentationAdvisor ragAdvisor) {
         return builder
                 .defaultAdvisors(memoryAdvisor, ragAdvisor)
+                .build();
+    }
+
+    /**
+     * 视觉模型专用 ChatClient
+     */
+    @Bean
+    @Qualifier("visionChatClient")
+    public ChatClient visionChatClient(ChatClient.Builder builder,
+                                       MessageChatMemoryAdvisor memoryAdvisor) {
+        return builder
+                .defaultOptions(ChatOptions.builder()
+                        .model("llava")      // 指定视觉模型
+                        .temperature(0.7)
+                        .build())
+                .defaultSystem("你是一个乐于助人的助手。请始终使用简体中文回答用户的问题，不要使用英文。")
+                .defaultAdvisors(memoryAdvisor)  // 可共享记忆顾问
                 .build();
     }
 }
