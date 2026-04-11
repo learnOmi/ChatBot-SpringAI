@@ -20,7 +20,7 @@ spring:
     show-sql: true # 在控制台打印执行的 SQL 语句（开发调试用）
     properties:
       hibernate:
-        format_sql: true # 格式化打印的 SQL 语句
+        format_sql: false # 格式化打印的 SQL 语句
   # AI服务配置
   ai:
     # Ollama AI服务配置
@@ -54,7 +54,39 @@ spring:
         # 向量维度，取决于使用的嵌入模型
         dimensions: 768
         initialize-schema: true   # 自动建表（有时不生效，可手动）
+
+# Spring Boot Actuator管理端点配置
+management:
+  # 端点配置
+  endpoints:
+    web:
+      exposure:
+        # 暴露 prometheus 和 health 端点，用于监控和健康检查
+        include: health,prometheus
+  # 指标配置
+  metrics:
+    distribution:
+      # 配置百分比分布和SLO（服务等级目标），用于更精细的耗时监控
+      percentiles-histogram[http.server.requests]: true
+      percentiles-histogram[spring.ai.chat.client.requests]: true
+      # HTTP请求的SLO阈值
+      slo[http.server.requests]: 100ms, 250ms, 500ms, 1s, 2s
+      # AI聊天客户端请求的SLO阈值
+      slo[spring.ai.chat.client.requests]: 2s,5s,10s,20s,30s
+  # 链路追踪配置
+  tracing:
+    sampling:
+      probability: 1.0  # 采样率100%，生产环境可按需调整
+    zipkin:
+      endpoint: http://localhost:9411/api/v2/spans # Zipkin 服务地址，用于收集和展示追踪数据
+  # Prometheus监控配置
+  prometheus:
+    metrics:
+      export:
+        enabled: true # 启用 Prometheus 指标导出，允许Prometheus服务器拉取指标数据
+
 logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
     org.springframework.ai.chat.service: DEBUG
+    org.springframework.ai.observation: DEBUG

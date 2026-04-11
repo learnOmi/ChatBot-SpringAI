@@ -1,0 +1,14 @@
+# 全局配置，定义Prometheus的全局参数
+global:
+  # 抓取间隔，每15秒抓取一次指标数据
+  scrape_interval: 15s
+# 抓取配置，定义需要监控的目标 job
+scrape_configs:
+  # 定义一个名为'spring-ai-app'的监控任务
+  - job_name: 'spring-ai-app'
+    # 指标数据的访问路径，Spring Boot Actuator的Prometheus端点
+    metrics_path: '/actuator/prometheus'
+    # 静态目标配置，指定需要抓取指标的主机和端口
+    static_configs:
+      # 目标地址，Windows系统使用host.docker.internal，Linux系统使用localhost
+      - targets: ['host.docker.internal:8080'] # 如果是Linux，请改为 'localhost:8080'
