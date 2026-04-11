@@ -1,5 +1,7 @@
 package org.example.springairobot.controller;
 
+import org.example.springairobot.PO.DTO.EntityExtraction;
+import org.example.springairobot.PO.DTO.RagAnswer;
 import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.service.ChatService;
@@ -52,6 +54,18 @@ public class ChatController {
     @GetMapping(value = "/rag/stream", produces = "text/html; charset=UTF-8")
     public Flux<String> ragChatStream(@RequestParam String message, @RequestParam(required = false) String sessionId) {
         return chatService.ragChatStream(sessionId, message);
+    }
+
+    @GetMapping("/rag/structured")
+    public RagAnswer ragChatStructured(@RequestParam String message,
+                                       @RequestParam(required = false) String sessionId) {
+        return chatService.ragChatStructured(sessionId, message);
+    }
+
+    @GetMapping("/rag/extractentities")
+    public List<EntityExtraction> extractEntities(@RequestParam String query,
+                                                  @RequestParam(required = false) String sessionId) {
+        return chatService.extractEntities(sessionId, query);
     }
 
     // 获取会话历史
