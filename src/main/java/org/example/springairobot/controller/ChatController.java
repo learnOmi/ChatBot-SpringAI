@@ -32,6 +32,18 @@ public class ChatController {
         return chatService.chatStream(sessionId, message);
     }
 
+    @GetMapping("/tools")
+    public String chatWithTools(@RequestParam String message,
+                                @RequestParam(required = false) String sessionId) {
+        return chatService.chatWithTools(sessionId, message);
+    }
+
+    @GetMapping(value = "/tools/stream", produces = "text/html; charset=UTF-8")
+    public Flux<String> chatWithToolsStream(@RequestParam String message,
+                                            @RequestParam(required = false) String sessionId) {
+        return chatService.chatWithToolsStream(sessionId, message);
+    }
+
     @GetMapping("/rag")
     public String ragChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
         return chatService.ragChat(sessionId, message);
