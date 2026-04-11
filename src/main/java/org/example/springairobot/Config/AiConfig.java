@@ -1,6 +1,7 @@
 package org.example.springairobot.Config;
 
 import org.example.springairobot.RagOpt.ReRanker.OllamaReRankerDocumentPostProcessor;
+import org.example.springairobot.RagOpt.Retriever.BM25DocumentRetriever;
 import org.example.springairobot.RagOpt.Retriever.MultiQueryDocumentRetrieverAdapter;
 import org.example.springairobot.RagOpt.Transformer.ContextualQueryTransformer;
 import org.example.springairobot.service.ConversationService;
@@ -16,6 +17,9 @@ import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.List;
 
 @Configuration
 public class AiConfig {
@@ -24,9 +28,9 @@ public class AiConfig {
      * RAG 顾问（使用 RetrievalAugmentationAdvisor）
      */
     @Bean
-    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(QueryTransformer queryTransformer, DocumentRetriever multiQueryDocumentRetriever, DocumentPostProcessor ollamaReRanker) {
+    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(QueryTransformer queryTransformer, DocumentRetriever hybridRetriever, DocumentPostProcessor ollamaReRanker) {
         return RetrievalAugmentationAdvisor.builder()
-                .documentRetriever(multiQueryDocumentRetriever)
+                .documentRetriever(hybridRetriever)
                 .queryTransformers(queryTransformer)
                 .documentPostProcessors(ollamaReRanker)
                 .build();
@@ -55,32 +59,68 @@ public class AiConfig {
     }
 
     /**
-     * 创建并配置一个多查询文档检索器，该检索器通过生成多个查询变体来提高检索效果
+     * 创建并配置一个BM25DocumentRetriever Bean，用于文档检索
+     * BM25是一种常用的信息检索算法，用于计算文档与查询的相关性得分
      *
-     * @param chatClientBuilder 聊天客户端构建器，用于生成查询变体
-     * @param vectorStore 向量存储，用于文档相似性检索
-     * @return 配置好的多查询文档检索器实例
+     * @param jdbcTemplate Spring的JdbcTemplate对象，用于数据库操作
+     * @return 配置好的BM25DocumentRetriever实例，参数5可能表示BM25算法中的参数k1
      */
     @Bean
-    public DocumentRetriever multiQueryDocumentRetriever(ChatClient.Builder chatClientBuilder, VectorStore vectorStore) {
-        // 1. 创建向量检索器
-        VectorStoreDocumentRetriever vectorRetriever = VectorStoreDocumentRetriever.builder()
-                .vectorStore(vectorStore) // 设置向量存储
-                .similarityThreshold(0.5) // 设置相似度阈值为0.5
-                .topK(5) // 为后续去重和重排留出空间，设置检索前5个最相似文档
+    public BM25DocumentRetriever bm25Retriever(JdbcTemplate jdbcTemplate) {
+    // 使用JdbcTemplate和参数5创建BM25DocumentRetriever实例
+        return new BM25DocumentRetriever(jdbcTemplate, 5);
+    }
+
+    /**
+     * 创建并配置一个VectorStoreDocumentRetriever Bean
+     * 该Bean用于根据向量相似度检索文档
+     *
+     * @param vectorStore 向量存储对象，用于存储和检索文档向量
+     * @return 配置好的VectorStoreDocumentRetriever实例
+     */
+    @Bean
+    public VectorStoreDocumentRetriever vectorRetriever(VectorStore vectorStore) {
+        return VectorStoreDocumentRetriever.builder()
+            // 设置向量存储对象
+                .vectorStore(vectorStore)
+            // 设置相似度阈值为0.5，只有相似度大于此值的文档才会被检索到
+                .similarityThreshold(0.5)
+            // 设置检索结果返回前5个最相似的文档
+                .topK(5)
+            // 构建并返回VectorStoreDocumentRetriever实例
                 .build();
+    }
 
-        // 2. 关键：基于原始 builder 创建一个独立的“副本” builder，避免污染全局配置
-        ChatClient.Builder clonedBuilder = chatClientBuilder.clone();
-
-        // 3. 创建多查询扩展器
-        MultiQueryExpander queryExpander = MultiQueryExpander.builder()
-                .chatClientBuilder(clonedBuilder) // 设置聊天客户端构建器
-                .numberOfQueries(3) // 生成 3 个查询变体，增加检索覆盖面
+    /**
+     * 创建并配置一个MultiQueryExpander Bean
+     * MultiQueryExpander用于扩展查询，可能会将一个查询分解为多个子查询进行处理
+     *
+     * @param chatClientBuilder Spring AI的ChatClient构建器，用于构建聊天客户端
+     * @return 配置好的MultiQueryExpander实例
+     */
+    @Bean
+    public MultiQueryExpander multiQueryExpander(ChatClient.Builder chatClientBuilder) {
+        return MultiQueryExpander.builder()
+                .chatClientBuilder(chatClientBuilder.clone()) // 避免污染全局Builder，使用克隆的Builder实例
+                .numberOfQueries(3) // 设置查询数量为3，即每个查询会被扩展为3个子查询
                 .build();
+    }
 
-        // 3. 使用自定义适配器组装多查询检索器
-        return new MultiQueryDocumentRetrieverAdapter(queryExpander, vectorRetriever);
+    /**
+     * 创建一个混合文档检索器，结合了向量检索和BM25检索的优点
+     *
+     * @param expander 多查询扩展器，用于生成多个查询变体
+     * @param vectorRetriever 基于向量存储的文档检索器
+     * @param bm25Retriever 基于BM25算法的文档检索器
+     * @return 配置好的混合文档检索器实例
+     */
+    @Bean
+    public DocumentRetriever hybridRetriever(MultiQueryExpander expander,
+                                             VectorStoreDocumentRetriever vectorRetriever,
+                                             BM25DocumentRetriever bm25Retriever) {
+        // 将两个检索器放入列表，传给适配器
+        List<DocumentRetriever> retrievers = List.of(vectorRetriever, bm25Retriever);
+        return new MultiQueryDocumentRetrieverAdapter(expander, retrievers);
     }
 
     // 利用DocumentPostProcessor实现的自定义轻量级ReRanker
