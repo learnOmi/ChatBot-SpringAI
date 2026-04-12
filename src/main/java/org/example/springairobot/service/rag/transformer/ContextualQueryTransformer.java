@@ -1,4 +1,4 @@
-package org.example.springairobot.RagOpt.Transformer;
+package org.example.springairobot.service.rag.transformer;
 
 import org.example.springairobot.service.ConversationService;
 import org.springframework.ai.chat.client.ChatClient;
@@ -23,11 +23,9 @@ public class ContextualQueryTransformer implements QueryTransformer {
 
     @Override
     public Query transform(Query query) {
-        // 从 Query 上下文中获取 sessionId
         String sessionId = (String) query.context().get("sessionId");
         String originalText = query.text();
 
-        // 如果没有 sessionId 或历史消息为空，直接返回原查询
         if (!StringUtils.hasText(sessionId)) {
             return query;
         }
@@ -37,7 +35,6 @@ public class ContextualQueryTransformer implements QueryTransformer {
             return query;
         }
 
-        // 将历史消息格式化为文本
         String historyText = historyMessages.stream()
                 .map(msg -> (msg instanceof org.springframework.ai.chat.messages.UserMessage ? "User" : "Assistant")
                         + ": " + msg.getText())
@@ -61,16 +58,14 @@ public class ContextualQueryTransformer implements QueryTransformer {
                 .call()
                 .content();
 
-        // 如果改写失败或返回为空，则回退到原查询
         if (!StringUtils.hasText(rewritten)) {
             return query;
         }
 
-        // 返回一个新的 Query 对象，只包含改写后的文本和原始上下文
         return Query.builder()
                 .text(rewritten.trim())
-                .history(query.history())   // 保留原历史记录 (如有)
-                .context(query.context())   // 保留上下文，以便后续使用
+                .history(query.history())
+                .context(query.context())
                 .build();
     }
 }

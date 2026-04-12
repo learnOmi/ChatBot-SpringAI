@@ -1,9 +1,9 @@
 package org.example.springairobot.Config;
 
-import org.example.springairobot.RagOpt.ReRanker.OllamaReRankerDocumentPostProcessor;
-import org.example.springairobot.RagOpt.Retriever.BM25DocumentRetriever;
-import org.example.springairobot.RagOpt.Retriever.MultiQueryDocumentRetrieverAdapter;
-import org.example.springairobot.RagOpt.Transformer.ContextualQueryTransformer;
+import org.example.springairobot.service.rag.reranker.OllamaReRankerDocumentPostProcessor;
+import org.example.springairobot.service.rag.retriever.BM25DocumentRetriever;
+import org.example.springairobot.service.rag.retriever.MultiQueryDocumentRetrieverAdapter;
+import org.example.springairobot.service.rag.transformer.ContextualQueryTransformer;
 import org.example.springairobot.service.ConversationService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;

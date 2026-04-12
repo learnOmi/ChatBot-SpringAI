@@ -6,8 +6,8 @@ import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.ConversationService;
-import org.example.springairobot.service.MemoryEnhancementService;
-import org.example.springairobot.service.VisionService;
+import org.example.springairobot.service.memory.MemoryEnhancementService;
+import org.example.springairobot.service.vision.VisionService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
@@ -22,7 +22,6 @@ public class ChatController {
     private final ConversationService conversationService;
     private final VisionService visionService;
     private final MemoryEnhancementService memoryEnhancementService;
-
 
     public ChatController(ChatService chatService, ConversationService conversationService, VisionService visionService, MemoryEnhancementService memoryEnhancementService) {
         this.chatService = chatService;
@@ -41,18 +40,6 @@ public class ChatController {
     @GetMapping(value = "/stream", produces = "text/html; charset=UTF-8")
     public Flux<String> streamChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
         return chatService.chatStream(sessionId, message);
-    }
-
-    @GetMapping("/tools")
-    public String chatWithTools(@RequestParam String message,
-                                @RequestParam(required = false) String sessionId) {
-        return chatService.chatWithTools(sessionId, message);
-    }
-
-    @GetMapping(value = "/tools/stream", produces = "text/html; charset=UTF-8")
-    public Flux<String> chatWithToolsStream(@RequestParam String message,
-                                            @RequestParam(required = false) String sessionId) {
-        return chatService.chatWithToolsStream(sessionId, message);
     }
 
     @GetMapping("/rag")
@@ -99,18 +86,5 @@ public class ChatController {
     @PostMapping("/session")
     public String newSession(@RequestParam(required = false) String title) {
         return conversationService.createSession(title);
-    }
-
-    @PostMapping("/vision")
-    public String analyzeMedia(@RequestParam(required = false) String sessionId,
-                               @RequestParam String question,
-                               @RequestPart("image") MultipartFile imageFile) throws IOException {
-        return visionService.analyzeMedia(sessionId, question, imageFile);
-    }
-
-    @DeleteMapping("/memory/{userId}")
-    public String deleteMemory(@PathVariable String userId) {
-        memoryEnhancementService.deleteUserMemory(userId);
-        return "记忆已删除";
     }
 }

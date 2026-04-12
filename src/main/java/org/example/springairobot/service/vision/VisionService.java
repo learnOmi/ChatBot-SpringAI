@@ -1,9 +1,10 @@
-package org.example.springairobot.service;
+package org.example.springairobot.service.vision;
 
 import net.coobird.thumbnailator.Thumbnails;
 import org.example.springairobot.DAO.MessageAttachmentRepository;
 import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.MessageAttachment;
+import org.example.springairobot.service.ConversationService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.content.Media;
@@ -31,22 +32,17 @@ public class VisionService {
         this.attachmentRepo = attachmentRepo;
     }
 
-    /**
-     * 分析媒体文件并回答问题，同时对图片保存缩略图附件
-     */
     public String analyzeMedia(String sessionId, String question, MultipartFile mediaFile) throws IOException {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
         String fileContentType = mediaFile.getContentType();
         byte[] thumbnailBytes = null;
         String attachmentType = null;
 
-        // 1. 验证文件类型
         if (fileContentType == null || !isSupportedMediaType(fileContentType)) {
             throw new IllegalArgumentException("不支持的文件类型: " + fileContentType);
         }
 
         try {
-            // 2. 生成缩略图 (仅图片)
             if (fileContentType.startsWith("image/")) {
                 ByteArrayOutputStream thumbnailOutputStream = new ByteArrayOutputStream();
                 Thumbnails.of(mediaFile.getInputStream())
@@ -57,29 +53,24 @@ public class VisionService {
                 attachmentType = "image/jpeg";
             }
 
-            // 3. 将原始文件转为 Base64
             String base64Media = Base64.getEncoder().encodeToString(mediaFile.getBytes());
 
-            // 4. 构建 Media 对象，动态设置 MimeType
             Media media = Media.builder()
                     .mimeType(MimeTypeUtils.parseMimeType(fileContentType))
                     .data(base64Media)
                     .build();
 
-            // 5. 构建 UserMessage
             UserMessage userMessage = UserMessage.builder()
                     .text(question)
                     .media(media)
                     .build();
 
-            // 6. 调用模型 (建议根据文件类型切换模型，此处简化为使用预设的 visionChatClient)
             String response = visionChatClient.prompt()
                     .messages(userMessage)
                     .advisors(a -> a.param("chat_memory_conversation_id", effectiveSessionId))
                     .call()
                     .content();
 
-            // 7. 持久化
             ConversationMessage userMsg = conversationService.saveMessageAndReturn(
                     effectiveSessionId, "user", "[媒体文件] " + question, null);
 
@@ -104,7 +95,6 @@ public class VisionService {
         }
     }
 
-    // 辅助方法：检查文件类型是否受支持
     private boolean isSupportedMediaType(String contentType) {
         return contentType.startsWith("image/") ||
                 contentType.startsWith("video/") ||

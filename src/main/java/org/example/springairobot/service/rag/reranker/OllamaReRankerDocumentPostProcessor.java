@@ -1,4 +1,4 @@
-package org.example.springairobot.RagOpt.ReRanker;
+package org.example.springairobot.service.rag.reranker;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
@@ -27,16 +27,14 @@ public class OllamaReRankerDocumentPostProcessor implements DocumentPostProcesso
             return documents;
         }
 
-        String userQuestion = query.text(); // 直接从 Query 对象获取查询文本，无需 ThreadLocal
+        String userQuestion = query.text();
 
-        // 并发调用 Ollama 为每个文档打分（简单起见，也可串行）
         Map<Document, Double> scoreMap = new ConcurrentHashMap<>();
         documents.parallelStream().forEach(doc -> {
             double score = scoreDocument(userQuestion, doc.getText());
             scoreMap.put(doc, score);
         });
 
-        // 按分数降序排序，取前 topN
         return scoreMap.entrySet().stream()
                 .sorted(Map.Entry.<Document, Double>comparingByValue(Comparator.reverseOrder()))
                 .limit(topN)
@@ -62,7 +60,7 @@ public class OllamaReRankerDocumentPostProcessor implements DocumentPostProcesso
         try {
             return Double.parseDouble(response.trim());
         } catch (NumberFormatException e) {
-            return 0.0; // 解析失败视为不相关
+            return 0.0;
         }
     }
 }
