@@ -98,3 +98,12 @@ logging:
 app:
   upload:
     dir: C:\Users\Administrator\Pictures
+
+agent:
+  weather:
+    # 和风天气API配置
+    qweather:
+      api-url: https://my6r6yt68m.re.qweatherapi.com/v7/weather/now
+      geo-api-url: https://my6r6yt68m.re.qweatherapi.com/geo/v2/city/lookup
+  search:
+    brave-api-url: https://api.search.brave.com/res/v1/web/search
