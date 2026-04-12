@@ -89,6 +89,46 @@ management:
       export:
         enabled: true # 启用 Prometheus 指标导出，允许Prometheus服务器拉取指标数据
 
+resilience4j:
+  retry:
+    instances:
+      weather:
+        max-attempts: 3                # 最多重试3次（含首次）
+        wait-duration: 1s              # 重试间隔1秒
+        retry-exceptions:
+          - java.net.SocketTimeoutException
+          - java.io.IOException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException  # 参数错误不重试
+      search:
+        max-attempts: 2
+        wait-duration: 2s
+  circuitbreaker:
+    instances:
+      weather:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10        # 统计最近10次调用
+        failure-rate-threshold: 50     # 失败率超过50%时打开断路器
+        wait-duration-in-open-state: 30s  # 断路器打开后30秒进入半开状态
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      search:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+  timelimiter:
+    instances:
+      weather:
+        timeout-duration: 5s           # 天气查询超时5秒
+      search:
+        timeout-duration: 10s          # 搜索超时10秒
+  ratelimiter:
+    instances:
+      weather:
+        limit-for-period: 10           # 每个周期最多10次
+        limit-refresh-period: 1s       # 周期为1秒（即每秒最多10次）
+        timeout-duration: 500ms        # 获取许可的等待时间
+
 logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
