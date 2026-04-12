@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -57,11 +58,10 @@ public class IngestionService {
         this.metadataRepo = metadataRepo;
     }
 
-    /**
-     * 初始化方法，在组件构造完成后自动执行
-     * 完成文档的完整摄入流程：加载、分割、向量化存储
-     */
-    @PostConstruct
+    // 在 JPA 规范中，执行更新或删除操作（如 executeUpdate()）必须在事务上下文中进行
+    // @PostConstruct 在 Bean 初始化阶段（构造函数之后、依赖注入完成后）立即执行，
+    // 此时 Spring 的事务切面（AOP 代理）尚未完全准备好拦截方法调用
+    @Transactional
     public void runIngestion() {
         try {
             String fileId = "knowledge-base.txt";
