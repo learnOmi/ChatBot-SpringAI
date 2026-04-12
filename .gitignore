@@ -7,6 +7,8 @@ target/
 #logs
 logs/
 
+/src/main/resources/application-app.yml
+
 ### STS ###
 .apt_generated
 .classpath

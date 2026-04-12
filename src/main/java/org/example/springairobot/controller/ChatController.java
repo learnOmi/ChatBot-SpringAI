@@ -6,6 +6,7 @@ import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.ConversationService;
+import org.example.springairobot.service.MemoryEnhancementService;
 import org.example.springairobot.service.VisionService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,12 +21,14 @@ public class ChatController {
     private final ChatService chatService;
     private final ConversationService conversationService;
     private final VisionService visionService;
+    private final MemoryEnhancementService memoryEnhancementService;
 
 
-    public ChatController(ChatService chatService, ConversationService conversationService, VisionService visionService) {
+    public ChatController(ChatService chatService, ConversationService conversationService, VisionService visionService, MemoryEnhancementService memoryEnhancementService) {
         this.chatService = chatService;
         this.conversationService = conversationService;
         this.visionService = visionService;
+        this.memoryEnhancementService = memoryEnhancementService;
     }
 
     // 同步接口
@@ -103,5 +106,11 @@ public class ChatController {
                                @RequestParam String question,
                                @RequestPart("image") MultipartFile imageFile) throws IOException {
         return visionService.analyzeMedia(sessionId, question, imageFile);
+    }
+
+    @DeleteMapping("/memory/{userId}")
+    public String deleteMemory(@PathVariable String userId) {
+        memoryEnhancementService.deleteUserMemory(userId);
+        return "记忆已删除";
     }
 }

@@ -1,0 +1,39 @@
+resilience4j:
+  retry:
+    instances:
+      weather:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.net.SocketTimeoutException
+          - java.io.IOException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+      search:
+        max-attempts: 2
+        wait-duration: 2s
+  circuitbreaker:
+    instances:
+      weather:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      search:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+  timelimiter:
+    instances:
+      weather:
+        timeout-duration: 5s
+      search:
+        timeout-duration: 10s
+  ratelimiter:
+    instances:
+      weather:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 500ms

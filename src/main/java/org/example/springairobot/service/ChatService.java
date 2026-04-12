@@ -6,6 +6,7 @@ import org.example.springairobot.PO.DTO.EntityExtraction;
 import org.example.springairobot.PO.DTO.RagAnswer;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -108,7 +109,9 @@ public class ChatService {
                 .user(userMessage)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId))
+                        .param("sessionId", effectiveSessionId)
+                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
+                                new Filter.Key("type"), new Filter.Value("knowledge"))))
                 .call()
                 .content();
 
@@ -125,7 +128,9 @@ public class ChatService {
                 .user(userMessage)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId))
+                        .param("sessionId", effectiveSessionId)
+                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
+                                new Filter.Key("type"), new Filter.Value("knowledge"))))
                 .stream()
                 .content()
                 .doOnNext(chunk -> fullReplyBuilder.append(chunk))
@@ -162,7 +167,9 @@ public class ChatService {
                 .user(prompt)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId))
+                        .param("sessionId", effectiveSessionId)
+                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
+                                new Filter.Key("type"), new Filter.Value("knowledge"))))
                 .call()
                 .content();
 
@@ -204,7 +211,9 @@ public class ChatService {
                 .user(prompt)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId))
+                        .param("sessionId", effectiveSessionId)
+                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
+                                new Filter.Key("type"), new Filter.Value("knowledge"))))
                 .call()
                 .content();
 

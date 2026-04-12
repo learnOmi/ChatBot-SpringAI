@@ -16,7 +16,9 @@ import jakarta.annotation.PostConstruct;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * IngestionService 类负责处理文档的摄入过程，包括加载文档、分割文档、向量化存储等步骤。
@@ -91,7 +93,13 @@ public class IngestionService {
                 TextReader reader = new TextReader(knowledgeBase);
                 List<Document> documents = reader.get();
                 List<Document> chunks = textSplitter.apply(documents);
-                vectorStore.add(chunks);
+                List<Document> chunksWithMetadata = chunks.stream()
+                        .map(chunk -> new Document(chunk.getText(), Map.of(
+                                "source", fileId,
+                                "type", "knowledge"      // 标记为知识库
+                        )))
+                        .collect(Collectors.toList());
+                vectorStore.add(chunksWithMetadata);
                 System.out.println("✅ 知识库加载完成，共 " + chunks.size() + " 个文档块。");
 
                 // 3. 保存/更新元数据

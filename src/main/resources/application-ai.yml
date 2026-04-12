@@ -1,0 +1,22 @@
+spring:
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        options:
+          model: nomic-embed-text
+      chat:
+        options:
+          model: llama3.1:8b
+          temperature: 0.7
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: never
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: true
