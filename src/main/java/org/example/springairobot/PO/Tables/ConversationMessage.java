@@ -17,6 +17,7 @@ public class ConversationMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 声明一个Long类型的id属性，作为实体类的主键字段
     private String sessionId;
+    private String userId;         // 用户ID（长期记忆、用户画像）
     private String role;   // user / assistant
     @Column(columnDefinition = "TEXT")
     private String content;

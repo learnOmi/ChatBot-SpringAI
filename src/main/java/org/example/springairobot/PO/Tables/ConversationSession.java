@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 public class ConversationSession {
     @Id
     private String id;
+    private String userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String title;

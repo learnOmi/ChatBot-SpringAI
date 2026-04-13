@@ -32,8 +32,8 @@ public class VisionService {
         this.attachmentRepo = attachmentRepo;
     }
 
-    public String analyzeMedia(String sessionId, String question, MultipartFile mediaFile) throws IOException {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public String analyzeMedia(String sessionId, String userId, String question, MultipartFile mediaFile) throws IOException {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
         String fileContentType = mediaFile.getContentType();
         byte[] thumbnailBytes = null;
         String attachmentType = null;
@@ -72,7 +72,7 @@ public class VisionService {
                     .content();
 
             ConversationMessage userMsg = conversationService.saveMessageAndReturn(
-                    effectiveSessionId, "user", "[媒体文件] " + question, null);
+                    effectiveSessionId, userId, "user", "[媒体文件] " + question, null);
 
             if (thumbnailBytes != null) {
                 MessageAttachment attachment = new MessageAttachment();
@@ -82,7 +82,7 @@ public class VisionService {
                 attachmentRepo.save(attachment);
             }
 
-            conversationService.saveMessageAndReturn(effectiveSessionId, "assistant", response, null);
+            conversationService.saveMessageAndReturn(effectiveSessionId, userId, "assistant", response, null);
 
             return response;
 

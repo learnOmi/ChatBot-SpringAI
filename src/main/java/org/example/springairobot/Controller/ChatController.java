@@ -1,4 +1,4 @@
-package org.example.springairobot.controller;
+package org.example.springairobot.Controller;
 
 import org.example.springairobot.PO.DTO.EntityExtraction;
 import org.example.springairobot.PO.DTO.RagAnswer;
@@ -9,10 +9,8 @@ import org.example.springairobot.service.ConversationService;
 import org.example.springairobot.service.memory.MemoryEnhancementService;
 import org.example.springairobot.service.vision.VisionService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -32,36 +30,38 @@ public class ChatController {
 
     // 同步接口
     @GetMapping("/sync")
-    public String syncChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        return chatService.chat(sessionId, message);
+    public String syncChat(@RequestParam String message, @RequestParam(required = false) String userId, @RequestParam(required = false) String sessionId) {
+        return chatService.chat(sessionId, userId, message);
     }
 
     // 直接返回HTML
     @GetMapping(value = "/stream", produces = "text/html; charset=UTF-8")
-    public Flux<String> streamChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        return chatService.chatStream(sessionId, message);
+    public Flux<String> streamChat(@RequestParam String message, @RequestParam(required = false) String userId, @RequestParam(required = false) String sessionId) {
+        return chatService.chatStream(sessionId, userId, message);
     }
 
     @GetMapping("/rag")
-    public String ragChat(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        return chatService.ragChat(sessionId, message);
+    public String ragChat(@RequestParam String message, @RequestParam(required = false) String userId, @RequestParam(required = false) String sessionId) {
+        return chatService.ragChat(sessionId, userId, message);
     }
 
     @GetMapping(value = "/rag/stream", produces = "text/html; charset=UTF-8")
-    public Flux<String> ragChatStream(@RequestParam String message, @RequestParam(required = false) String sessionId) {
-        return chatService.ragChatStream(sessionId, message);
+    public Flux<String> ragChatStream(@RequestParam String message, @RequestParam(required = false) String userId, @RequestParam(required = false) String sessionId) {
+        return chatService.ragChatStream(sessionId, userId, message);
     }
 
     @GetMapping("/rag/structured")
     public RagAnswer ragChatStructured(@RequestParam String message,
+                                       @RequestParam(required = false) String userId,
                                        @RequestParam(required = false) String sessionId) {
-        return chatService.ragChatStructured(sessionId, message);
+        return chatService.ragChatStructured(sessionId, userId, message);
     }
 
     @GetMapping("/rag/extractentities")
     public List<EntityExtraction> extractEntities(@RequestParam String query,
+                                                  @RequestParam(required = false) String userId,
                                                   @RequestParam(required = false) String sessionId) {
-        return chatService.extractEntities(sessionId, query);
+        return chatService.extractEntities(sessionId, userId, query);
     }
 
     // 获取会话历史
@@ -70,10 +70,22 @@ public class ChatController {
         return conversationService.getHistory(sessionId);
     }
 
+    // 获取用户会话消息
+    @GetMapping("/user-history/{userId}")
+    public List<ConversationMessage> userHistory(@PathVariable String userId) {
+        return conversationService.getHistoryByUserId(userId);
+    }
+
     // 列出所有会话
     @GetMapping("/sessions")
     public List<ConversationSession> sessions() {
         return conversationService.listSessions();
+    }
+
+    // 列出用户会话
+    @GetMapping("/user-sessions")
+    public List<ConversationSession> userSessions(@RequestParam String userId) {
+        return conversationService.listSessionsByUser(userId);
     }
 
     // 删除会话
@@ -84,7 +96,7 @@ public class ChatController {
 
     // 创建新会话
     @PostMapping("/session")
-    public String newSession(@RequestParam(required = false) String title) {
-        return conversationService.createSession(title);
+    public String newSession(@RequestParam(required = false) String userId, @RequestParam(required = false) String title) {
+        return conversationService.createSession(userId, title);
     }
 }

@@ -24,16 +24,16 @@ public class MemoryEnhancementService {
 
     private final VectorStore vectorStore;
     private final UserProfileRepository userProfileRepo;
-    private final ChatClient chatClient;
+    private final ChatClient profileExtractionChatClient;
     private final ConversationService conversationService;
 
     public MemoryEnhancementService(VectorStore vectorStore,
                                     UserProfileRepository userProfileRepo,
-                                    @Qualifier("chatClient") ChatClient chatClient,
+                                    @Qualifier("profileExtractionChatClient") ChatClient profileExtractionChatClient,
                                     ConversationService conversationService) {
         this.vectorStore = vectorStore;
         this.userProfileRepo = userProfileRepo;
-        this.chatClient = chatClient;
+        this.profileExtractionChatClient = profileExtractionChatClient;
         this.conversationService = conversationService;
     }
 
@@ -45,7 +45,7 @@ public class MemoryEnhancementService {
             return;
         }
 
-        List<ConversationMessage> allMessages = conversationService.getHistory(userId);
+        List<ConversationMessage> allMessages = conversationService.getHistoryByUserId(userId);
         if (allMessages.isEmpty()) {
             return;
         }
@@ -60,6 +60,7 @@ public class MemoryEnhancementService {
 
         String prompt = """
                 根据以下对话内容，提取用户的关键偏好和特征。
+                重要：只返回 JSON 数据，不要包含任何解释、Schema 或 Markdown 代码块标记
                 
                 对话内容：
                 %s
@@ -68,7 +69,7 @@ public class MemoryEnhancementService {
                 """.formatted(recentConversation, converter.getFormat());
 
         try {
-            String response = chatClient.prompt()
+            String response = profileExtractionChatClient.prompt()
                     .user(prompt)
                     .call()
                     .content();
@@ -78,7 +79,8 @@ public class MemoryEnhancementService {
             profile.setUserId(userId);
             profile.setPreferredUnits(extracted.getPreferredUnits());
             profile.setLanguage(extracted.getLanguage());
-            profile.setInterests(extracted.getInterests());
+            profile.setInterests(extracted.getInterests() != null ?
+                    String.join(",", extracted.getInterests()) : ""); // 转换
             profile.setLocation(extracted.getLocation());
             profile.setSummary(extracted.getSummary());
             userProfileRepo.save(profile);

@@ -32,8 +32,8 @@ public class ChatService {
 
     // 同步对话（记忆由 MessageChatMemoryAdvisor 自动管理）
     // ==================== 普通对话 ====================
-    public String chat(String sessionId, String userMessage) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public String chat(String sessionId, String userId, String userMessage) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         String assistantReply = chatClient.prompt()
                 .user(userMessage)
@@ -42,12 +42,12 @@ public class ChatService {
                 .content();
 
         // 持久化完整历史
-        conversationService.savePair(effectiveSessionId, userMessage, assistantReply, null);
+        conversationService.savePair(effectiveSessionId, userId, userMessage, assistantReply, null);
         return assistantReply;
     }
 
-    public Flux<String> chatStream(String sessionId, String userMessage) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public Flux<String> chatStream(String sessionId, String userId, String userMessage) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         // 用于累积流式响应的 StringBuilder
         StringBuilder fullReplyBuilder = new StringBuilder();
@@ -60,13 +60,13 @@ public class ChatService {
                 .doOnNext(chunk -> fullReplyBuilder.append(chunk))
                 .doOnComplete(() -> {
                     String fullReply = fullReplyBuilder.toString();
-                    conversationService.savePair(effectiveSessionId, userMessage, fullReply, null);
+                    conversationService.savePair(effectiveSessionId, userId, userMessage, fullReply, null);
                 });
     }
 
     // ==================== RAG 对话 ====================
-    public String ragChat(String sessionId, String userMessage) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public String ragChat(String sessionId, String userId, String userMessage) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         String assistantReply = ragChatClient.prompt()
                 .user(userMessage)
@@ -78,12 +78,12 @@ public class ChatService {
                 .call()
                 .content();
 
-        conversationService.savePair(effectiveSessionId, userMessage, assistantReply, null);
+        conversationService.savePair(effectiveSessionId, userId, userMessage, assistantReply, null);
         return assistantReply;
     }
 
-    public Flux<String> ragChatStream(String sessionId, String userMessage) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public Flux<String> ragChatStream(String sessionId, String userId, String userMessage) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         StringBuilder fullReplyBuilder = new StringBuilder();
 
@@ -99,15 +99,15 @@ public class ChatService {
                 .doOnNext(chunk -> fullReplyBuilder.append(chunk))
                 .doOnComplete(() -> {
                     String fullReply = fullReplyBuilder.toString();
-                    conversationService.savePair(effectiveSessionId, userMessage, fullReply, null);
+                    conversationService.savePair(effectiveSessionId, userId, userMessage, fullReply, null);
                 });
     }
 
     /**
      * 结构化 RAG 回答：返回答案 + 引用来源 + 置信度
      */
-    public RagAnswer ragChatStructured(String sessionId, String userMessage) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public RagAnswer ragChatStructured(String sessionId, String userId, String userMessage) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         // 1. 创建针对 RagAnswer 的输出转换器
         BeanOutputConverter<RagAnswer> converter = new BeanOutputConverter<>(RagAnswer.class);
@@ -140,7 +140,7 @@ public class ChatService {
         RagAnswer ragAnswer = converter.convert(response);
 
         // 5. 持久化对话历史（保存原始问题和结构化答案的文本表示）
-        conversationService.savePair(effectiveSessionId, userMessage, ragAnswer.getAnswer(), null);
+        conversationService.savePair(effectiveSessionId, userId, userMessage, ragAnswer.getAnswer(), null);
 
         return ragAnswer;
     }
@@ -148,8 +148,8 @@ public class ChatService {
     /**
      * 批量实体抽取（结构化列表输出）
      */
-    public List<EntityExtraction> extractEntities(String sessionId, String userQuery) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public List<EntityExtraction> extractEntities(String sessionId, String userId, String userQuery) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
         // 1. 创建针对 List<EntityExtraction> 的输出转换器
         //    关键：使用 ParameterizedTypeReference 传递泛型信息
@@ -186,10 +186,10 @@ public class ChatService {
         // 5. 持久化：保存用户查询和抽取结果（JSON 格式）
         try {
             // 保存用户原始查询
-            conversationService.saveMessage(effectiveSessionId, "user", userQuery, null);
+            conversationService.saveMessage(effectiveSessionId, userId, "user", userQuery, null);
             // 将抽取结果序列化为 JSON 字符串，作为助手回复保存
             String entitiesJson = objectMapper.writeValueAsString(entities);
-            conversationService.saveMessage(effectiveSessionId, "assistant", entitiesJson, null);
+            conversationService.saveMessage(effectiveSessionId, userId, "assistant", entitiesJson, null);
         } catch (Exception e) {
             // 日志记录，但不影响主流程返回
             System.err.println("持久化实体抽取结果失败: " + e.getMessage());

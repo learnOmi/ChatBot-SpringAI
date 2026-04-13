@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface ConversationMessageRepository extends JpaRepository<ConversationMessage, Long> {
     List<ConversationMessage> findBySessionIdOrderByCreatedAtAsc(String sessionId);
+    List<ConversationMessage> findByUserIdOrderByCreatedAtAsc(String userId);
     void deleteBySessionId(String sessionId);
 }

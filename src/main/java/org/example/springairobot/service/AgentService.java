@@ -24,14 +24,14 @@ public class AgentService {
         this.memoryService = memoryService;
     }
 
-    public String execute(String sessionId, String userInput) {
-        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, null);
+    public String execute(String sessionId, String userId, String userInput) {
+        String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
-        UserProfile profile = memoryService.getUserProfile(effectiveSessionId);
+        UserProfile profile = memoryService.getUserProfile(userId);
         String profileContext = profile != null ?
                 "用户偏好：单位-" + profile.getPreferredUnits() + "，语言-" + profile.getLanguage() : "";
 
-        List<Document> memories = memoryService.retrieveRelevantMemories(effectiveSessionId, userInput, 3);
+        List<Document> memories = memoryService.retrieveRelevantMemories(userId, userInput, 3);
         String memoryContext = memories.stream()
                 .map(Document::getText)
                 .reduce("", (a, b) -> a + "\n[历史记忆] " + b);
@@ -53,9 +53,9 @@ public class AgentService {
                 .call()
                 .content();
 
-        conversationService.savePair(effectiveSessionId, userInput, response, null);
+        conversationService.savePair(effectiveSessionId, userId, userInput, response, null);
 
-        memoryService.updateUserProfileAndMemory(effectiveSessionId);
+        memoryService.updateUserProfileAndMemory(userId);
 
         return response;
     }

@@ -34,32 +34,29 @@ public class ConversationService {
     }
 
     // 创建新会话（生成 UUID）
-    public String createSession(String title) {
+    public String createSession(String userId, String title) {
         String id = UUID.randomUUID().toString();
         ConversationSession session = new ConversationSession();
         session.setId(id);
+        session.setUserId(userId);
         session.setTitle(title != null ? title : "新对话");
         sessionRepo.save(session);
         return id;
     }
 
     // 获取或创建会话
-    public String getOrCreateSession(String sessionId, String title) {
+    public String getOrCreateSession(String sessionId, String userId, String title) {
         if (sessionId != null && sessionRepo.existsById(sessionId)) {
             return sessionId;
         }
-        String newId = UUID.randomUUID().toString();
-        ConversationSession session = new ConversationSession();
-        session.setId(newId);
-        session.setTitle(title != null ? title : "新对话");
-        sessionRepo.save(session);
-        return newId;
+        return createSession(userId, title);
     }
 
     // 保存消息
-    public void saveMessage(String sessionId, String role, String content, Integer tokensUsed) {
+    public void saveMessage(String sessionId, String userId, String role, String content, Integer tokensUsed) {
         ConversationMessage msg = new ConversationMessage();
         msg.setSessionId(sessionId);
+        msg.setUserId(userId);
         msg.setRole(role);
         msg.setContent(content);
         msg.setTokensUsed(tokensUsed);
@@ -73,17 +70,18 @@ public class ConversationService {
     }
 
     // 保存一对消息（用户和助手），通常在响应完成后调用
-    public void savePair(String sessionId, String userMessage, String assistantMessage, Integer tokensUsed) {
-        saveMessage(sessionId, "user", userMessage, tokensUsed);
-        saveMessage(sessionId, "assistant", assistantMessage, tokensUsed);
+    public void savePair(String sessionId, String userId, String userMessage, String assistantMessage, Integer tokensUsed) {
+        saveMessage(sessionId, userId, "user", userMessage, tokensUsed);
+        saveMessage(sessionId, userId, "assistant", assistantMessage, tokensUsed);
     }
 
     /**
      * 保存消息并返回持久化后的消息对象（用于获取自增ID）
      */
-    public ConversationMessage saveMessageAndReturn(String sessionId, String role, String content, Integer tokensUsed) {
+    public ConversationMessage saveMessageAndReturn(String sessionId, String userId, String role, String content, Integer tokensUsed) {
         ConversationMessage msg = new ConversationMessage();
         msg.setSessionId(sessionId);
+        msg.setUserId(userId);
         msg.setRole(role);
         msg.setContent(content);
         msg.setTokensUsed(tokensUsed);
@@ -99,6 +97,11 @@ public class ConversationService {
     // 获取会话历史（用于构建对话上下文）
     public List<ConversationMessage> getHistory(String sessionId) {
         return messageRepo.findBySessionIdOrderByCreatedAtAsc(sessionId);
+    }
+
+    // 获取用户所有历史消息（按 userId）
+    public List<ConversationMessage> getHistoryByUserId(String userId) {
+        return messageRepo.findByUserIdOrderByCreatedAtAsc(userId);
     }
 
     // 加载历史消息（转换为 Spring AI Message 列表）
@@ -121,8 +124,13 @@ public class ConversationService {
         sessionRepo.deleteById(sessionId);
     }
 
-    // 获取会话列表
+    // 获取所有会话列表
     public List<ConversationSession> listSessions() {
         return sessionRepo.findAll(Sort.by(Sort.Direction.DESC, "updatedAt"));
+    }
+
+    // 列出用户的所有会话
+    public List<ConversationSession> listSessionsByUser(String userId) {
+        return sessionRepo.findByUserIdOrderByUpdatedAtDesc(userId);
     }
 }

@@ -171,4 +171,11 @@ public class AiConfig {
                 .defaultAdvisors(memoryAdvisor)  // 可共享记忆顾问
                 .build();
     }
+
+    @Bean
+    @Qualifier("profileExtractionChatClient")
+    public ChatClient profileExtractionChatClient(ChatClient.Builder builder) {
+        return builder.build();
+    }
+
 }

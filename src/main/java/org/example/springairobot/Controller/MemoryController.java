@@ -1,4 +1,4 @@
-package org.example.springairobot.controller;
+package org.example.springairobot.Controller;
 
 import org.example.springairobot.service.memory.MemoryEnhancementService;
 import org.springframework.web.bind.annotation.*;
