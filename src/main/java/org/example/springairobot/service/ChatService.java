@@ -3,14 +3,20 @@ package org.example.springairobot.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.springairobot.PO.DTO.EntityExtraction;
 import org.example.springairobot.PO.DTO.RagAnswer;
+import org.example.springairobot.service.rag.RagEvaluatorService;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatClientResponse;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -19,15 +25,19 @@ public class ChatService {
     private final ChatClient ragChatClient;
     private final ConversationService conversationService;
     private final ObjectMapper objectMapper;
+    private final RagEvaluatorService evaluatorService;   // 注入评估服务
+
 
     public ChatService(@Qualifier("chatClient") ChatClient chatClient,
                        @Qualifier("ragChatClient") ChatClient ragChatClient,
                        ConversationService conversationService,
+                       RagEvaluatorService evaluatorService,
                        ObjectMapper objectMapper) {
         this.chatClient = chatClient;
         this.ragChatClient = ragChatClient;
         this.conversationService = conversationService;
         this.objectMapper = objectMapper;
+        this.evaluatorService = evaluatorService;
     }
 
     // 同步对话（记忆由 MessageChatMemoryAdvisor 自动管理）
@@ -68,38 +78,67 @@ public class ChatService {
     public String ragChat(String sessionId, String userId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
-        String assistantReply = ragChatClient.prompt()
+        // 获取完整的 ChatResponse
+        ChatResponse chatResponse = ragChatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId)
-                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
-                                new Filter.Key("type"), new Filter.Value("knowledge"))))
+                        .param("sessionId", effectiveSessionId))
                 .call()
-                .content();
+                .chatResponse();
 
-        conversationService.savePair(effectiveSessionId, userId, userMessage, assistantReply, null);
-        return assistantReply;
+        String response = chatResponse.getResult().getOutput().getText();
+
+        // 从元数据中提取检索文档
+        List<Document> retrievedDocs = chatResponse.getMetadata()
+                .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
+
+        // 评估答案质量
+        boolean acceptable = evaluatorService.evaluate(userMessage, retrievedDocs, response);
+        String finalResponse = acceptable ? response : evaluatorService.getDefaultUnknownAnswer();
+
+        conversationService.savePair(effectiveSessionId, userId, userMessage, finalResponse, null);
+        return finalResponse;
     }
 
     public Flux<String> ragChatStream(String sessionId, String userId, String userMessage) {
         String effectiveSessionId = conversationService.getOrCreateSession(sessionId, userId, null);
 
+        // 用于累积流式响应的 StringBuilder
         StringBuilder fullReplyBuilder = new StringBuilder();
+        // 用于收集检索文档
+        List<Document> retrievedDocs = new java.util.ArrayList<>();
 
         return ragChatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId)
-                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
-                                new Filter.Key("type"), new Filter.Value("knowledge"))))
+                        .param("sessionId", effectiveSessionId))
                 .stream()
-                .content()
-                .doOnNext(chunk -> fullReplyBuilder.append(chunk))
+                .chatResponse()
+                .doOnNext(chatResponse -> {
+                    String content = chatResponse.getResult().getOutput().getText();
+                    if (content != null) {
+                        fullReplyBuilder.append(content);
+                    }
+                    // 从元数据中提取检索文档
+                    List<Document> docs = chatResponse.getMetadata()
+                            .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
+                    if (!docs.isEmpty()) {
+                        retrievedDocs.clear();
+                        retrievedDocs.addAll(docs);
+                    }
+                })
+                .map(chatResponse -> {
+                    String content = chatResponse.getResult().getOutput().getText();
+                    return content != null ? content : "";
+                })
                 .doOnComplete(() -> {
                     String fullReply = fullReplyBuilder.toString();
-                    conversationService.savePair(effectiveSessionId, userId, userMessage, fullReply, null);
+                    // 评估答案质量
+                    boolean acceptable = evaluatorService.evaluate(userMessage, retrievedDocs, fullReply);
+                    String finalResponse = acceptable ? fullReply : evaluatorService.getDefaultUnknownAnswer();
+                    conversationService.savePair(effectiveSessionId, userId, userMessage, finalResponse, null);
                 });
     }
 
@@ -117,7 +156,7 @@ public class ChatService {
                 你是一个基于知识库的问答助手。请根据检索到的文档内容回答用户问题。
                 要求：
                 - 如果知识库中包含相关信息，请给出准确回答，并附上引用来源（文档中的关键句子或段落标题）。
-                - 如果知识库中没有相关信息，请礼貌回答“不知道”，sources 为空，confidence 为 0。
+                - 如果知识库中没有相关信息，请礼貌回答"不知道"，sources 为空，confidence 为 0。
                 - 回答必须严格遵循下面的 JSON 格式。
 
                 用户问题：%s
@@ -126,18 +165,32 @@ public class ChatService {
                 """.formatted(userMessage, converter.getFormat());
 
         // 3. 调用 RAG ChatClient（它会自动执行检索增强）
-        String response = ragChatClient.prompt()
+        ChatResponse chatResponse = ragChatClient.prompt()
                 .user(prompt)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId)
-                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
-                                new Filter.Key("type"), new Filter.Value("knowledge"))))
+                        .param("sessionId", effectiveSessionId))
                 .call()
-                .content();
+                .chatResponse();
+
+        String response = chatResponse.getResult().getOutput().getText();
+        // 从元数据中提取检索文档
+        List<Document> retrievedDocs = chatResponse.getMetadata()
+                .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
+
+        // 评估答案质量
+        boolean acceptable = evaluatorService.evaluate(userMessage, retrievedDocs, response);
 
         // 4. 转换为对象
-        RagAnswer ragAnswer = converter.convert(response);
+        RagAnswer ragAnswer;
+        if (acceptable) {
+            ragAnswer = converter.convert(response);
+        } else {
+            ragAnswer = new RagAnswer();
+            ragAnswer.setAnswer(evaluatorService.getDefaultUnknownAnswer());
+            ragAnswer.setSources(Collections.emptyList());
+            ragAnswer.setConfidence(0.0);
+        }
 
         // 5. 持久化对话历史（保存原始问题和结构化答案的文本表示）
         conversationService.savePair(effectiveSessionId, userId, userMessage, ragAnswer.getAnswer(), null);
@@ -170,18 +223,29 @@ public class ChatService {
                 """.formatted(userQuery, converter.getFormat());
 
         // 3. 调用 RAG ChatClient
-        String response = ragChatClient.prompt()
+        ChatResponse chatResponse = ragChatClient.prompt()
                 .user(prompt)
                 .advisors(a -> a
                         .param("chat_memory_conversation_id", effectiveSessionId)
-                        .param("sessionId", effectiveSessionId)
-                        .param("FILTER_EXPRESSION", new Filter.Expression(Filter.ExpressionType.EQ,
-                                new Filter.Key("type"), new Filter.Value("knowledge"))))
+                        .param("sessionId", effectiveSessionId))
                 .call()
-                .content();
+                .chatResponse();
+
+        String response = chatResponse.getResult().getOutput().getText();
+        // 从元数据中提取检索文档
+        List<Document> retrievedDocs = chatResponse.getMetadata()
+                .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
+
+        // 评估答案质量
+        boolean acceptable = evaluatorService.evaluate(userQuery, retrievedDocs, response);
 
         // 4. 转换为 List<EntityExtraction>
-        List<EntityExtraction> entities = converter.convert(response);
+        List<EntityExtraction> entities;
+        if (acceptable) {
+            entities = converter.convert(response);
+        } else {
+            entities = Collections.emptyList();
+        }
 
         // 5. 持久化：保存用户查询和抽取结果（JSON 格式）
         try {

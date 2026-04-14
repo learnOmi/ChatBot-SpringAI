@@ -37,7 +37,7 @@ public class AgentConfig {
                     - 当用户询问天气、搜索、知识库内容时，你必须调用相应的工具。
                     - 绝对禁止编造或猜测答案，所有信息必须来自工具返回的结果。
                     - 如果工具调用失败，请如实告知用户服务暂时不可用。
-                    - 回答时，请引用工具返回的具体数据。
+                    - 回答时，使用中文回答。
                     """)
                 .defaultAdvisors(memoryAdvisor, loggerAdvisor)
                 .defaultTools(weatherTools, searchTools, knowledgeTools)

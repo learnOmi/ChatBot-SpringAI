@@ -181,4 +181,9 @@ public class AiConfig {
         return builder.build();
     }
 
+    @Bean
+    @Qualifier("evaluationChatClient")
+    public ChatClient evaluationChatClient(ChatClient.Builder builder) {
+        return builder.clone().build();
+    }
 }
