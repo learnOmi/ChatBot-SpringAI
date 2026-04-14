@@ -16,6 +16,7 @@ import org.springframework.ai.rag.preretrieval.query.transformation.QueryTransfo
 import org.springframework.ai.rag.retrieval.search.DocumentRetriever;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -89,6 +90,8 @@ public class AiConfig {
                 .similarityThreshold(0.5)
             // 设置检索结果返回前5个最相似的文档
                 .topK(5)
+                .filterExpression(new Filter.Expression(Filter.ExpressionType.EQ,
+                        new Filter.Key("type"), new Filter.Value("knowledge")))
             // 构建并返回VectorStoreDocumentRetriever实例
                 .build();
     }
