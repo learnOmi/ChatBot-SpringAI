@@ -1,5 +1,8 @@
 package org.example.springairobot.Config;
 
+import org.example.springairobot.tool.KnowledgeTools;
+import org.example.springairobot.tool.SearchTools;
+import org.example.springairobot.tool.WeatherTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -23,7 +26,9 @@ public class AgentConfig {
     public ChatClient agentChatClient(ChatClient.Builder builder,
                                       MessageChatMemoryAdvisor memoryAdvisor,
                                       SimpleLoggerAdvisor loggerAdvisor,
-                                      List<ToolCallback> allToolCallbacks) {
+                                      WeatherTools weatherTools,
+                                      SearchTools searchTools,
+                                      KnowledgeTools knowledgeTools) {
         return builder
                 .defaultSystem("""
                     你是一个智能助手，必须通过调用工具来获取实时信息。
@@ -35,7 +40,7 @@ public class AgentConfig {
                     - 回答时，请引用工具返回的具体数据。
                     """)
                 .defaultAdvisors(memoryAdvisor, loggerAdvisor)
-                .defaultTools(allToolCallbacks.toArray(new ToolCallback[0]))
+                .defaultTools(weatherTools, searchTools, knowledgeTools)
                 .build();
     }
 
