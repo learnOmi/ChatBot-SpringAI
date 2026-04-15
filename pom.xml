@@ -92,6 +92,7 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-rag</artifactId>
         </dependency>
+
         <!-- Chat Memory 已包含在 client-chat 中，无需额外声明 -->
         <dependency>
             <groupId>org.springframework.ai</groupId>

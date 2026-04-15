@@ -67,9 +67,25 @@ public class RagEvaluatorService {
     }
 
     /**
+     * 单独评估相关性
+     */
+    public EvaluationResponse evaluateRelevancy(String userQuery, List<Document> context, String response) {
+        EvaluationRequest request = new EvaluationRequest(userQuery, context, response);
+        return relevancyEvaluator.evaluate(request);
+    }
+
+    /**
+     * 单独评估事实准确性
+     */
+    public EvaluationResponse evaluateFactuality(List<Document> context, String response) {
+        EvaluationRequest request = new EvaluationRequest(null, context, response);
+        return factCheckingEvaluator.evaluate(request);
+    }
+
+    /**
      * 获取默认的"不知道"答案
      */
     public String getDefaultUnknownAnswer() {
-        return "不知道";
+        return "抱歉，我暂时无法准确回答这个问题。";
     }
 }

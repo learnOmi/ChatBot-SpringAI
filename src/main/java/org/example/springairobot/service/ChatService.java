@@ -89,16 +89,24 @@ public class ChatService {
 
         String response = chatResponse.getResult().getOutput().getText();
 
-        // 从元数据中提取检索文档
-        List<Document> retrievedDocs = chatResponse.getMetadata()
-                .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
+        // 检查是否触发了兜底
+        Boolean fallback = (Boolean) chatResponse.getMetadata().get("fallback");
+        if (fallback != null && fallback) {
+            response = evaluatorService.getDefaultUnknownAnswer();
+        } else {
+            // 从元数据中提取检索文档
+            List<Document> retrievedDocs = chatResponse.getMetadata()
+                    .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
 
-        // 评估答案质量
-        boolean acceptable = evaluatorService.evaluate(userMessage, retrievedDocs, response);
-        String finalResponse = acceptable ? response : evaluatorService.getDefaultUnknownAnswer();
+            // 评估答案质量
+            boolean acceptable = evaluatorService.evaluate(userMessage, retrievedDocs, response);
+            if (!acceptable) {
+                response = evaluatorService.getDefaultUnknownAnswer();
+            }
+        }
 
-        conversationService.savePair(effectiveSessionId, userId, userMessage, finalResponse, null);
-        return finalResponse;
+        conversationService.savePair(effectiveSessionId, userId, userMessage, response, null);
+        return response;
     }
 
     public Flux<String> ragChatStream(String sessionId, String userId, String userMessage) {

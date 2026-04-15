@@ -1,5 +1,9 @@
 package org.example.springairobot.Config;
 
+import org.example.springairobot.Advisor.ChatMemory.NoOpChatMemory;
+import org.example.springairobot.Advisor.EvaluationAdvisor;
+import org.example.springairobot.Advisor.SelfHealingAdvisor;
+import org.example.springairobot.Advisor.SelfHealingRecursiveAdvisor;
 import org.example.springairobot.service.rag.reranker.OllamaReRankerDocumentPostProcessor;
 import org.example.springairobot.service.rag.retriever.BM25DocumentRetriever;
 import org.example.springairobot.service.rag.retriever.MultiQueryDocumentRetrieverAdapter;
@@ -43,9 +47,18 @@ public class AiConfig {
      * 消息记忆顾问
      * ChatMemory Bean 由 Spring Boot 自动配置提供（JdbcChatMemoryRepository + MessageWindowChatMemory）
      */
+    @Qualifier("messageChatMemoryAdvisor")
     @Bean
     public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
         return MessageChatMemoryAdvisor.builder(chatMemory).build();
+    }
+
+    // 无记忆顾问
+    @Bean
+    @Qualifier("noMemoryAdvisor")
+    public MessageChatMemoryAdvisor noMemoryAdvisor() {
+        ChatMemory noOpMemory = new NoOpChatMemory();
+        return MessageChatMemoryAdvisor.builder(noOpMemory).build();
     }
 
     /**
@@ -140,7 +153,7 @@ public class AiConfig {
      */
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder,
-                                 MessageChatMemoryAdvisor memoryAdvisor) {
+                                 @Qualifier("messageChatMemoryAdvisor")MessageChatMemoryAdvisor memoryAdvisor) {
         return builder
                 .defaultAdvisors(memoryAdvisor)
                 .build();
@@ -151,10 +164,19 @@ public class AiConfig {
      */
     @Bean
     public ChatClient ragChatClient(ChatClient.Builder builder,
-                                    MessageChatMemoryAdvisor memoryAdvisor,
-                                    RetrievalAugmentationAdvisor ragAdvisor) {
+                                    @Qualifier("messageChatMemoryAdvisor")MessageChatMemoryAdvisor memoryAdvisor,
+                                    RetrievalAugmentationAdvisor ragAdvisor,
+                                    EvaluationAdvisor evaluationAdvisor,
+                                    SelfHealingAdvisor selfHealingAdvisor,
+                                    SelfHealingRecursiveAdvisor recursiveAdvisor) {
         return builder
-                .defaultAdvisors(memoryAdvisor, ragAdvisor)
+                .defaultAdvisors(
+                    memoryAdvisor,
+                    recursiveAdvisor,
+                    ragAdvisor,
+                    evaluationAdvisor,
+                    selfHealingAdvisor
+                )
                 .build();
     }
 
@@ -164,7 +186,7 @@ public class AiConfig {
     @Bean
     @Qualifier("visionChatClient")
     public ChatClient visionChatClient(ChatClient.Builder builder,
-                                       MessageChatMemoryAdvisor memoryAdvisor) {
+                                       @Qualifier("messageChatMemoryAdvisor") MessageChatMemoryAdvisor memoryAdvisor) {
         return builder
                 .defaultOptions(ChatOptions.builder()
                         .model("llava")      // 指定视觉模型
@@ -183,7 +205,7 @@ public class AiConfig {
 
     @Bean
     @Qualifier("evaluationChatClient")
-    public ChatClient evaluationChatClient(ChatClient.Builder builder) {
-        return builder.clone().build();
+    public ChatClient evaluationChatClient(@Qualifier("noMemoryAdvisor") MessageChatMemoryAdvisor noMemoryAdvisor, ChatClient.Builder builder) {
+        return builder.clone().defaultAdvisors(noMemoryAdvisor).build();
     }
 }
