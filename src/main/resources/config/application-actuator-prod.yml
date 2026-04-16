@@ -1,0 +1,42 @@
+# ===========================================
+# Actuator 配置 - 生产环境
+# ===========================================
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram[http.server.requests]: true
+      percentiles-histogram[spring.ai.chat.client.requests]: true
+      slo[http.server.requests]: 100ms, 250ms, 500ms, 1s, 2s
+      slo[spring.ai.chat.client.requests]: 2s, 5s, 10s, 20s, 30s
+  tracing:
+    sampling:
+      probability: 0.1
+    zipkin:
+      endpoint: ${ZIPKIN_ENDPOINT}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.ai.chat.client.advisor: INFO
+    org.springframework.ai.chat.service: INFO
+    org.springframework.ai.observation: WARN
+    org.example.springairobot: INFO

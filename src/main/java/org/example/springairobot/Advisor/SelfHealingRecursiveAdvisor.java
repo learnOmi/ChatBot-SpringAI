@@ -1,5 +1,6 @@
 package org.example.springairobot.Advisor;
 
+import org.example.springairobot.constants.AppConstants;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
@@ -19,9 +20,6 @@ import java.util.Map;
 @Component
 public class SelfHealingRecursiveAdvisor implements CallAdvisor {
 
-    private static final String RETRY_COUNT_KEY = "retryCount";
-    private static final String MAX_RETRIES_KEY = "maxRetries";
-
     private ChatClient.Builder retryBuilder;
 
     public void setRetryBuilder(ChatClient.Builder retryBuilder) {
@@ -30,19 +28,21 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
 
     @Override
     public String getName() {
-        return "selfHealingRecursiveAdvisor";
+        return AppConstants.AdvisorConstants.SELF_HEALING_RECURSIVE_ADVISOR_NAME;
     }
 
     @Override
     public int getOrder() {
-        return 180;
+        return AppConstants.AdvisorConstants.SELF_HEALING_RECURSIVE_ADVISOR_ORDER;
     }
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        int retryCount = (Integer) request.context().getOrDefault(RETRY_COUNT_KEY, 0);
+        int retryCount = (Integer) request.context()
+                .getOrDefault(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT, 0);
         if (retryCount == 0) {
-            request.context().put(MAX_RETRIES_KEY, 2);
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_MAX_RETRIES, 
+                    AppConstants.AdvisorConstants.DEFAULT_MAX_RETRIES);
         }
 
         ChatClientResponse response;
@@ -59,26 +59,31 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
             return response;
         }
 
-        Boolean fallback = (Boolean) request.context().get("fallback");
+        Boolean fallback = (Boolean) request.context()
+                .get(AppConstants.AdvisorConstants.CONTEXT_KEY_FALLBACK);
         if (fallback != null && fallback) {
             return response;
         }
 
-        int currentRetry = (Integer) request.context().getOrDefault(RETRY_COUNT_KEY, 0);
-        int maxRetries = (Integer) request.context().getOrDefault(MAX_RETRIES_KEY, 2);
+        int currentRetry = (Integer) request.context()
+                .getOrDefault(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT, 0);
+        int maxRetries = (Integer) request.context()
+                .getOrDefault(AppConstants.AdvisorConstants.CONTEXT_KEY_MAX_RETRIES, 
+                              AppConstants.AdvisorConstants.DEFAULT_MAX_RETRIES);
 
         if (currentRetry >= maxRetries) {
-            request.context().put("fallback", true);
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_FALLBACK, true);
             return response;
         }
 
-        request.context().put(RETRY_COUNT_KEY, currentRetry + 1);
+        request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT, currentRetry + 1);
 
         return adviseCall(request, chain);
     }
 
     private boolean checkEvaluationPass(ChatClientRequest request) {
-        Object evalResultObj = request.context().get("evaluationResult");
+        Object evalResultObj = request.context()
+                .get(AppConstants.AdvisorConstants.CONTEXT_KEY_EVALUATION_RESULT);
         if (evalResultObj != null) {
             try {
                 return (boolean) evalResultObj.getClass().getMethod("isPass").invoke(evalResultObj);
@@ -90,11 +95,14 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
     }
 
     private ChatClientRequest applyHealingStrategy(ChatClientRequest request) {
-        Boolean needsHealing = (Boolean) request.context().get("needsHealing");
+        Boolean needsHealing = (Boolean) request.context()
+                .get(AppConstants.AdvisorConstants.CONTEXT_KEY_NEEDS_HEALING);
         if (needsHealing != null && needsHealing) {
-            String strategy = (String) request.context().get("healingStrategy");
-            if ("query_rewrite".equals(strategy)) {
-                String rewrittenQuery = (String) request.context().get("rewrittenQuery");
+            String strategy = (String) request.context()
+                    .get(AppConstants.AdvisorConstants.CONTEXT_KEY_HEALING_STRATEGY);
+            if (AppConstants.AdvisorConstants.HEALING_STRATEGY_QUERY_REWRITE.equals(strategy)) {
+                String rewrittenQuery = (String) request.context()
+                        .get(AppConstants.AdvisorConstants.CONTEXT_KEY_REWRITTEN_QUERY);
                 if (rewrittenQuery != null) {
                     return ChatClientRequest.builder()
                             .prompt(request.prompt().augmentUserMessage(rewrittenQuery))
@@ -102,15 +110,16 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
                             .build();
                 }
             }
-            request.context().remove("needsHealing");
-            request.context().remove("healingStrategy");
+            request.context().remove(AppConstants.AdvisorConstants.CONTEXT_KEY_NEEDS_HEALING);
+            request.context().remove(AppConstants.AdvisorConstants.CONTEXT_KEY_HEALING_STRATEGY);
         }
         return request;
     }
 
     private ChatClientResponse executeRetry(ChatClientRequest request) {
         if (retryBuilder == null) {
-            throw new IllegalStateException("retryBuilder not configured. Call setRetryBuilder() during initialization.");
+            throw new IllegalStateException(
+                    AppConstants.SelfHealingConstants.ERROR_RETRY_BUILDER_NOT_CONFIGURED);
         }
 
         ChatClient retryClient = retryBuilder.build();
@@ -120,11 +129,12 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
                 .user(userText)
                 .advisors(a -> {
                     for (Map.Entry<String, Object> entry : request.context().entrySet()) {
-                        if (!entry.getKey().equals(RETRY_COUNT_KEY)) {
+                        if (!entry.getKey().equals(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT)) {
                             a.param(entry.getKey(), entry.getValue());
                         }
                     }
-                    a.param(RETRY_COUNT_KEY, request.context().get(RETRY_COUNT_KEY));
+                    a.param(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT, 
+                            request.context().get(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT));
                 })
                 .call()
                 .chatResponse();

@@ -1,10 +1,21 @@
 package org.example.springairobot.tool;
 
+import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.SearchService;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
+/**
+ * 搜索工具类
+ * 
+ * 提供网络搜索相关的工具函数，供AI Agent自动调用
+ * 
+ * 功能特点：
+ * - 集成Brave Search API
+ * - 返回实时搜索结果
+ * - 支持降级到模拟数据
+ */
 @Component
 public class SearchTools {
 
@@ -14,14 +25,14 @@ public class SearchTools {
         this.searchService = searchService;
     }
 
-    @Tool(description = """
-        在互联网上搜索实时信息。
-        当用户询问以下内容时必须调用此工具：
-        - 最新新闻、百科知识、市场行情、产品价格、人物背景等无法从本地知识库获取的信息。
-        - 例如："2026年人工智能趋势"、"秦锋的对手有哪些"。
-        绝对禁止编造搜索结果。
-        """)
-    public String webSearch(@ToolParam(description = "搜索关键词") String query) {
+    /**
+     * 网络搜索
+     * 
+     * @param query 搜索关键词
+     * @return 搜索结果字符串
+     */
+    @Tool(description = AppConstants.SearchConstants.TOOL_DESC_WEB_SEARCH)
+    public String webSearch(@ToolParam(description = AppConstants.SearchConstants.TOOL_PARAM_QUERY) String query) {
         return searchService.webSearch(query);
     }
 }

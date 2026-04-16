@@ -1,10 +1,11 @@
 package org.example.springairobot.Controller;
 
+import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.memory.MemoryEnhancementService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/memory")
+@RequestMapping(AppConstants.ApiPaths.MEMORY_BASE)
 public class MemoryController {
 
     private final MemoryEnhancementService memoryService;
@@ -16,6 +17,6 @@ public class MemoryController {
     @DeleteMapping("/{userId}")
     public String deleteMemory(@PathVariable String userId) {
         memoryService.deleteUserMemory(userId);
-        return "记忆已删除";
+        return AppConstants.ControllerMessages.MEMORY_DELETED;
     }
 }

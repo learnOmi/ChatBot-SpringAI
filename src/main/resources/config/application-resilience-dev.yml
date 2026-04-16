@@ -1,3 +1,7 @@
+# ===========================================
+# Resilience4j 配置 - 开发环境
+# ===========================================
+
 resilience4j:
   retry:
     instances:
@@ -12,6 +16,7 @@ resilience4j:
       search:
         max-attempts: 2
         wait-duration: 2s
+
   circuitbreaker:
     instances:
       weather:
@@ -25,15 +30,21 @@ resilience4j:
         sliding-window-size: 5
         failure-rate-threshold: 60
         wait-duration-in-open-state: 60s
+
   timelimiter:
     instances:
       weather:
-        timeout-duration: 5s
-      search:
         timeout-duration: 10s
+      search:
+        timeout-duration: 15s
+
   ratelimiter:
     instances:
       weather:
+        limit-for-period: 20
+        limit-refresh-period: 1s
+        timeout-duration: 500ms
+      search:
         limit-for-period: 10
         limit-refresh-period: 1s
         timeout-duration: 500ms

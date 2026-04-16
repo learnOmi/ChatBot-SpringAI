@@ -1,13 +1,17 @@
+# ===========================================
+# AI 配置 - 开发环境
+# ===========================================
+
 spring:
   ai:
     ollama:
-      base-url: http://localhost:11434
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       embedding:
         options:
-          model: nomic-embed-text
+          model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
       chat:
         options:
-          model: llama3.1:8b
+          model: ${OLLAMA_CHAT_MODEL:llama3.1:8b}
           temperature: 0.7
     chat:
       memory:

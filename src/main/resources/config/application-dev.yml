@@ -1,0 +1,15 @@
+# ===========================================
+# 开发环境配置 (dev)
+# ===========================================
+
+spring:
+  config:
+    import:
+      - classpath:config/application-datasource-dev.yml
+      - classpath:config/application-ai-dev.yml
+      - classpath:config/application-resilience-dev.yml
+      - classpath:config/application-actuator-dev.yml
+      - classpath:application-ocr.yml
+      - classpath:application-audio.yml
+      - classpath:application-file-processing.yml
+      - classpath:config/application-app-dev.yml

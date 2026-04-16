@@ -1,0 +1,25 @@
+# 生产环境特定配置
+app:
+  upload:
+    dir: ${APP_UPLOAD_DIR}
+  debug:
+    enabled: false
+
+  vision:
+    thumbnail:
+      width: 200
+      height: 200
+      format: jpg
+      quality: 0.8
+
+
+# Agent API 配置 - 生产环境（必须通过环境变量设置）
+agent:
+  weather:
+    qweather:
+      api-url: ${QWEATHER_API_URL}
+      geo-api-url: ${QWEATHER_GEO_API_URL}
+      api-key: ${QWEATHER_API_KEY}
+  search:
+    brave-api-url: ${BRAVE_API_URL}
+    brave-api-key: ${BRAVE_API_KEY}

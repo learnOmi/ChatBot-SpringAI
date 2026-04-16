@@ -1,12 +1,13 @@
 package org.example.springairobot.Advisor;
 
 import org.example.springairobot.PO.DTO.EvaluationResult;
+import org.example.springairobot.constants.AppConstants;
+import org.example.springairobot.constants.EvaluationFailReason;
 import org.example.springairobot.service.rag.RagEvaluatorService;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
-import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.stereotype.Component;
@@ -30,12 +31,12 @@ public class EvaluationAdvisor implements CallAdvisor {
 
     @Override
     public String getName() {
-        return "evaluationAdvisor";
+        return AppConstants.AdvisorConstants.EVALUATION_ADVISOR_NAME;
     }
 
     @Override
     public int getOrder() {
-        return 250;
+        return AppConstants.AdvisorConstants.EVALUATION_ADVISOR_ORDER;
     }
 
     @Override
@@ -52,7 +53,7 @@ public class EvaluationAdvisor implements CallAdvisor {
 
         boolean relevancyPass = false;
         boolean factualityPass = false;
-        String failReason = "none";
+        String failReason = EvaluationFailReason.NONE.getValue();
 
         if (!retrievedDocs.isEmpty()) {
             // RAG场景：有检索文档，评估相关性和事实准确性
@@ -60,7 +61,7 @@ public class EvaluationAdvisor implements CallAdvisor {
                 relevancyPass = evaluatorService.evaluateRelevancy(userQuery, retrievedDocs, answer).isPass();
                 factualityPass = evaluatorService.evaluateFactuality(retrievedDocs, answer).isPass();
             } catch (Exception e) {
-                failReason = "evaluation_error";
+                failReason = EvaluationFailReason.EVALUATION_ERROR.getValue();
             }
         } else {
             // Agent 场景：无检索文档，评估工具调用和答案质量
@@ -68,14 +69,14 @@ public class EvaluationAdvisor implements CallAdvisor {
             boolean hasToolResult = hasToolResultInAnswer(answer);
             if (!hasToolResult) {
                 // Agent 没有使用工具结果，直接标记生成失败
-                failReason = "generation";
+                failReason = EvaluationFailReason.GENERATION.getValue();
             } else {
                 // Agent 调用了工具并使用了工具结果，只评估答案是否回答了用户问题
                 try {
                     relevancyPass = evaluateAgentAnswerQuality(userQuery, answer);
                     factualityPass = true;
                 } catch (Exception e) {
-                    failReason = "evaluation_error";
+                    failReason = EvaluationFailReason.EVALUATION_ERROR.getValue();
                 }
             }
         }
@@ -84,11 +85,11 @@ public class EvaluationAdvisor implements CallAdvisor {
         boolean pass = relevancyPass && factualityPass;
         if (!pass) {
             if (!relevancyPass && !factualityPass) {
-                failReason = "both";
+                failReason = EvaluationFailReason.BOTH.getValue();
             } else if (!relevancyPass) {
-                failReason = "retrieval";
+                failReason = EvaluationFailReason.RETRIEVAL.getValue();
             } else {
-                failReason = "generation";
+                failReason = EvaluationFailReason.GENERATION.getValue();
             }
         }
 
@@ -112,7 +113,8 @@ public class EvaluationAdvisor implements CallAdvisor {
         if (answer == null || answer.trim().isEmpty()) {
             return false;
         }
-        return answer.contains("\"tool_result\"") || answer.contains("tool_result");
+        return answer.contains("\"" + AppConstants.AdvisorConstants.TOOL_RESULT_KEY_IN_ANSWER + "\"") ||
+               answer.contains(AppConstants.AdvisorConstants.TOOL_RESULT_KEY_IN_ANSWER);
     }
 
     private boolean evaluateAgentAnswerQuality(String userQuery, String answer) {
@@ -120,12 +122,10 @@ public class EvaluationAdvisor implements CallAdvisor {
             return false;
         }
         String lowerAnswer = answer.toLowerCase();
-        if (lowerAnswer.contains("无法回答") || lowerAnswer.contains("暂时不可用") || 
-            lowerAnswer.contains("服务暂时不可用") || lowerAnswer.contains("无法获取")) {
-            return false;
-        }
-        if (lowerAnswer.contains("错误") || lowerAnswer.contains("失败")) {
-            return false;
+        for (String keyword : AppConstants.AdvisorConstants.NEGATIVE_QUALITY_KEYWORDS) {
+            if (lowerAnswer.contains(keyword)) {
+                return false;
+            }
         }
         return true;
     }

@@ -1,7 +1,7 @@
 # 语音转写配置
 audio:
   whisper:
-    model-path: C:\Users\Administrator\SpringAIRobot\src\main\resources\tools    # Whisper 模型文件存放目录
-    model-file: ggml-base-q5_1.bin         # 使用的模型文件名
-    language: zh                           # 识别语言，auto 为自动
-    threads: 4                             # 最大线程数
+    model-path: ${WHISPER_MODEL_PATH:${user.dir}/models/whisper}  # 使用环境变量或默认相对路径
+    model-file: ggml-base-q5_1.bin       # 使用的模型文件名
+    language: zh                         # 识别语言，auto 为自动
+    threads: 4                           # 最大线程数

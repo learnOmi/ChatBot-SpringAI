@@ -2,6 +2,7 @@ package org.example.springairobot.service.file;
 
 import org.example.springairobot.PO.DTO.BatchProcessResult;
 import org.example.springairobot.PO.DTO.BatchProcessResponse;
+import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.file.audio.AudioTranscriptionService;
 import org.example.springairobot.service.file.document.DocumentParserService;
 import org.example.springairobot.service.file.ocr.OcrService;
@@ -14,11 +15,24 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 @Service
 public class UnifiedFileProcessingService {
+
+    private static final Set<String> DOCUMENT_TYPES = Set.of(
+            AppConstants.FileTypes.CONTENT_TYPE_PDF,
+            AppConstants.FileTypes.CONTENT_TYPE_WORD,
+            AppConstants.FileTypes.CONTENT_TYPE_WORD_XML,
+            AppConstants.FileTypes.CONTENT_TYPE_EXCEL,
+            AppConstants.FileTypes.CONTENT_TYPE_EXCEL_XML,
+            AppConstants.FileTypes.CONTENT_TYPE_POWERPOINT,
+            AppConstants.FileTypes.CONTENT_TYPE_POWERPOINT_XML,
+            AppConstants.FileTypes.CONTENT_TYPE_RTF,
+            AppConstants.FileTypes.CONTENT_TYPE_ODT
+    );
 
     private final DocumentParserService documentParser;
     private final OcrService ocrService;
@@ -38,7 +52,7 @@ public class UnifiedFileProcessingService {
     public String processFile(MultipartFile file) throws Exception {
         String contentType = file.getContentType();
         if (contentType == null) {
-            throw new IllegalArgumentException("无法识别文件类型");
+            throw new IllegalArgumentException(AppConstants.FileProcessingMessages.ERROR_FILE_TYPE_UNKNOWN);
         }
 
         if (isDocumentType(contentType)) {
@@ -49,12 +63,12 @@ public class UnifiedFileProcessingService {
             try {
                 return audioService.transcribe(file);
             } catch (UnsupportedAudioFileException e) {
-                throw new IOException("不支持的音频格式：" + e.getMessage(), e);
+                throw new IOException(AppConstants.FileProcessingMessages.ERROR_AUDIO_FORMAT_UNSUPPORTED + e.getMessage(), e);
             }
         } else if (isTextType(contentType)) {
             return new String(file.getBytes());
         } else {
-            throw new IllegalArgumentException("不支持的文件类型：" + contentType);
+            throw new IllegalArgumentException(AppConstants.FileProcessingMessages.ERROR_FILE_TYPE_UNSUPPORTED + contentType);
         }
     }
 
@@ -109,28 +123,20 @@ public class UnifiedFileProcessingService {
     }
 
     private boolean isDocumentType(String contentType) {
-        return contentType.equals("application/pdf") ||
-               contentType.equals("application/msword") ||
-               contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
-               contentType.equals("application/vnd.ms-excel") ||
-               contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
-               contentType.equals("application/vnd.ms-powerpoint") ||
-               contentType.equals("application/vnd.openxmlformats-officedocument.presentationml.presentation") ||
-               contentType.equals("application/rtf") ||
-               contentType.equals("application/vnd.oasis.opendocument.text");
+        return DOCUMENT_TYPES.contains(contentType);
     }
 
     private boolean isImageType(String contentType) {
-        return contentType != null && contentType.startsWith("image/");
+        return contentType != null && contentType.startsWith(AppConstants.FileTypes.CONTENT_TYPE_PREFIX_IMAGE);
     }
 
     private boolean isAudioType(String contentType) {
-        return contentType != null && (contentType.startsWith("audio/") ||
-                contentType.equals("video/mp4") ||
-                contentType.equals("video/mpeg"));
+        return contentType != null && (contentType.startsWith(AppConstants.FileTypes.CONTENT_TYPE_PREFIX_AUDIO) ||
+                AppConstants.FileTypes.CONTENT_TYPE_VIDEO_MP4.equals(contentType) ||
+                AppConstants.FileTypes.CONTENT_TYPE_VIDEO_MPEG.equals(contentType));
     }
 
     private boolean isTextType(String contentType) {
-        return contentType != null && contentType.startsWith("text/");
+        return contentType != null && contentType.startsWith(AppConstants.FileTypes.CONTENT_TYPE_PREFIX_TEXT);
     }
 }

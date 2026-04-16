@@ -1,0 +1,56 @@
+# ===========================================
+# Resilience4j 配置 - 生产环境
+# ===========================================
+
+resilience4j:
+  retry:
+    instances:
+      weather:
+        max-attempts: 3
+        wait-duration: 2s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.net.SocketTimeoutException
+          - java.io.IOException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+      search:
+        max-attempts: 2
+        wait-duration: 3s
+        exponential-backoff-multiplier: 2
+
+  circuitbreaker:
+    instances:
+      weather:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        slow-call-duration-threshold: 5s
+        slow-call-rate-threshold: 60
+      search:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 120s
+        slow-call-duration-threshold: 8s
+        slow-call-rate-threshold: 70
+
+  timelimiter:
+    instances:
+      weather:
+        timeout-duration: 5s
+      search:
+        timeout-duration: 10s
+
+  ratelimiter:
+    instances:
+      weather:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 1s
+      search:
+        limit-for-period: 5
+        limit-refresh-period: 1s
+        timeout-duration: 1s

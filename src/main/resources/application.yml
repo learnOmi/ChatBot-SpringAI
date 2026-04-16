@@ -1,13 +1,60 @@
+# ===========================================
+# Spring AI Robot 主配置文件
+# ===========================================
+# 
+# 配置文件结构：
+#   resources/
+#   ├── application.yml              # 主配置（环境切换入口）
+#   ├── application-ocr.yml          # OCR公共配置
+#   ├── application-audio.yml        # 音频公共配置
+#   ├── application-file-processing.yml  # 文件处理公共配置
+#   ├── application-app-properties.yml   # 应用公共属性
+#   └── config/
+#       ├── application-dev.yml          # 开发环境主配置
+#       ├── application-datasource-dev.yml
+#       ├── application-ai-dev.yml
+#       ├── application-resilience-dev.yml
+#       ├── application-actuator-dev.yml
+#       ├── application-prod.yml         # 生产环境主配置
+#       ├── application-datasource-prod.yml
+#       ├── application-ai-prod.yml
+#       ├── application-resilience-prod.yml
+#       └── application-actuator-prod.yml
+#
+# Spring Boot 配置文件加载顺序：
+#   1. classpath:/application.yml
+#   2. classpath:/config/application.yml
+#   3. classpath:/application-{profile}.yml
+#   4. classpath:/config/application-{profile}.yml  ✅
+#
+# 环境切换：
+#   开发环境：spring.profiles.active=dev
+#   生产环境：spring.profiles.active=prod
+#
+# 启动方式：
+#   开发环境：java -jar app.jar --spring.profiles.active=dev
+#   生产环境：java -jar app.jar --spring.profiles.active=prod
+#
+# 环境变量配置（生产环境必须设置）：
+#   - DB_HOST: 数据库主机
+#   - DB_PORT: 数据库端口
+#   - DB_NAME: 数据库名称
+#   - DB_USERNAME: 数据库用户名
+#   - DB_PASSWORD: 数据库密码
+#   - OLLAMA_BASE_URL: Ollama 服务地址
+#   - OLLAMA_CHAT_MODEL: 聊天模型名称
+#   - OLLAMA_EMBED_MODEL: 嵌入模型名称
+#   - QWEATHER_API_KEY: 和风天气 API Key
+#   - BRAVE_API_KEY: Brave 搜索 API Key
+#   - TESSERACT_DATA_PATH: Tesseract 数据路径
+#   - WHISPER_MODEL_PATH: Whisper 模型路径
+#   - ZIPKIN_ENDPOINT: Zipkin 追踪端点（可选）
+# ===========================================
+
 spring:
   application:
     name: SpringAIRobot
-  config:
-    import:
-      - classpath:application-datasource.yml
-      - classpath:application-ai.yml
-      - classpath:application-ocr.yml
-      - classpath:application-audio.yml
-      - classpath:application-file-processing.yml
-      - classpath:application-actuator.yml
-      - classpath:application-resilience.yml
-      - classpath:application-app.yml
+  
+  # 默认激活开发环境，生产环境请设置为 prod
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}

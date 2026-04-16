@@ -1,0 +1,36 @@
+# ===========================================
+# Actuator 配置 - 开发环境
+# ===========================================
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,beans,configprops,loggers
+  endpoint:
+    health:
+      show-details: always
+    loggers:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram[http.server.requests]: true
+      percentiles-histogram[spring.ai.chat.client.requests]: true
+      slo[http.server.requests]: 100ms, 250ms, 500ms, 1s, 2s
+      slo[spring.ai.chat.client.requests]: 2s, 5s, 10s, 20s, 30s
+  tracing:
+    sampling:
+      probability: 1.0
+    zipkin:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG
+    org.springframework.ai.chat.service: DEBUG
+    org.springframework.ai.observation: DEBUG
+    org.example.springairobot: DEBUG

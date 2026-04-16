@@ -1,6 +1,8 @@
 package org.example.springairobot.Advisor;
 
 import org.example.springairobot.PO.DTO.EvaluationResult;
+import org.example.springairobot.constants.AppConstants;
+import org.example.springairobot.constants.EvaluationFailReason;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
@@ -20,18 +22,18 @@ public class SelfHealingAdvisor implements CallAdvisor {
 
     private final ChatClient queryRewriteClient;
 
-    public SelfHealingAdvisor(@Qualifier("evaluationChatClient") ChatClient queryRewriteClient) {
+    public SelfHealingAdvisor(@Qualifier(AppConstants.AiConfigConstants.QUALIFIER_EVALUATION_CHAT_CLIENT) ChatClient queryRewriteClient) {
         this.queryRewriteClient = queryRewriteClient;
     }
 
     @Override
     public String getName() {
-        return "selfHealingAdvisor";
+        return AppConstants.AdvisorConstants.SELF_HEALING_ADVISOR_NAME;
     }
 
     @Override
     public int getOrder() {
-        return 200;
+        return AppConstants.AdvisorConstants.SELF_HEALING_ADVISOR_ORDER;
     }
 
     @Override
@@ -40,7 +42,8 @@ public class SelfHealingAdvisor implements CallAdvisor {
         ChatClientResponse response = chain.nextCall(request);
 
         // 检查评估结果
-        EvaluationResult evalResult = (EvaluationResult) request.context().get("evaluationResult");
+        EvaluationResult evalResult = (EvaluationResult) request.context()
+                .get(AppConstants.AdvisorConstants.CONTEXT_KEY_EVALUATION_RESULT);
 
         // 评估通过或无评估结果，直接返回
         if (evalResult == null || evalResult.isPass()) {
@@ -48,39 +51,42 @@ public class SelfHealingAdvisor implements CallAdvisor {
         }
 
         // 检查重试次数
-        Integer retryCount = (Integer) request.context().getOrDefault("retryCount", 0);
-        int maxRetries = (Integer) request.context().getOrDefault("maxRetries", 2);
+        Integer retryCount = (Integer) request.context()
+                .getOrDefault(AppConstants.AdvisorConstants.CONTEXT_KEY_RETRY_COUNT, 0);
+        int maxRetries = (Integer) request.context()
+                .getOrDefault(AppConstants.AdvisorConstants.CONTEXT_KEY_MAX_RETRIES, 
+                              AppConstants.AdvisorConstants.DEFAULT_MAX_RETRIES);
 
         // 超过最大重试次数，标记兜底
         if (retryCount >= maxRetries) {
-            request.context().put("fallback", true);
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_FALLBACK, true);
             return response;
         }
 
         // 根据失败原因选择修复策略，只标记不重试
         String failReason = evalResult.getFailReason();
-        String originalQuery = (String) request.context().get("originalQuery");
+        String originalQuery = (String) request.context()
+                .get(AppConstants.AdvisorConstants.CONTEXT_KEY_ORIGINAL_QUERY);
 
-        if ("generation".equals(failReason)) {
-            request.context().put("healingStrategy", "regenerate");
+        if (EvaluationFailReason.GENERATION.getValue().equals(failReason)) {
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_HEALING_STRATEGY, 
+                    AppConstants.AdvisorConstants.HEALING_STRATEGY_REGENERATE);
         } else {
-            request.context().put("healingStrategy", "query_rewrite");
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_HEALING_STRATEGY, 
+                    AppConstants.AdvisorConstants.HEALING_STRATEGY_QUERY_REWRITE);
             String rewritten = rewriteQuery(originalQuery);
-            request.context().put("rewrittenQuery", rewritten);
+            request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_REWRITTEN_QUERY, rewritten);
         }
 
-        request.context().put("needsHealing", true);
+        request.context().put(AppConstants.AdvisorConstants.CONTEXT_KEY_NEEDS_HEALING, true);
 
         return response;
     }
 
     private String rewriteQuery(String originalQuery) {
-        String prompt = """
-                你是一个查询优化专家。请将以下用户问题改写为更适合检索的关键词形式。
-                要求：只返回改写后的查询文本，不要任何解释。
-                
-                原始问题：%s
-                改写后的查询：""".formatted(originalQuery);
+        String prompt = String.format(
+                AppConstants.SelfHealingConstants.QUERY_REWRITE_PROMPT_TEMPLATE, 
+                originalQuery);
         return queryRewriteClient.prompt().user(prompt).call().content().trim();
     }
 }

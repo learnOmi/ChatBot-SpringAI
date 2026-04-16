@@ -8,12 +8,27 @@ import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.example.springairobot.constants.AppConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 搜索服务
+ * 
+ * 提供网络搜索功能，集成Brave Search API
+ * 
+ * 功能特点：
+ * - 集成Brave Search API获取实时搜索结果
+ * - 支持熔断、重试等容错机制
+ * - API不可用时自动降级到模拟数据
+ * 
+ * 容错配置：
+ * - 重试：最多2次，间隔2秒
+ * - 熔断：失败率60%触发，等待60秒恢复
+ */
 @Service
 public class SearchService {
 
@@ -28,17 +43,27 @@ public class SearchService {
     public SearchService() {
         this.objectMapper = new ObjectMapper();
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .connectTimeout(AppConstants.SearchConstants.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(AppConstants.SearchConstants.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .build();
     }
 
+    /**
+     * 网络搜索
+     * 
+     * 支持重试、熔断等容错机制
+     * 
+     * @param query 搜索关键词
+     * @return 搜索结果字符串
+     * @throws IllegalArgumentException 如果搜索关键词为空
+     */
     @Retry(name = "search")
     @CircuitBreaker(name = "search")
     public String webSearch(String query) {
         if (query == null || query.trim().isEmpty()) {
-            throw new IllegalArgumentException("搜索关键词不能为空");
+            throw new IllegalArgumentException(AppConstants.SearchConstants.ERROR_QUERY_EMPTY);
         }
+        // API Key未配置时使用模拟数据
         if (braveApiKey == null || braveApiKey.isBlank()) {
             return fallbackWebSearch(query);
         }
@@ -49,11 +74,19 @@ public class SearchService {
         }
     }
 
+    /**
+     * 异步网络搜索
+     * 
+     * 支持超时控制
+     * 
+     * @param query 搜索关键词
+     * @return 异步搜索结果
+     */
     @TimeLimiter(name = "search")
     public CompletableFuture<String> webSearchAsync(String query) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String url = braveApiUrl + "?q=" + query + "&count=5";
+                String url = braveApiUrl + "?q=" + query + "&count=" + AppConstants.SearchConstants.SEARCH_RESULT_COUNT;
                 Request request = new Request.Builder()
                         .url(url)
                         .header("X-Subscription-Token", braveApiKey)
@@ -70,12 +103,12 @@ public class SearchService {
                         return fallbackWebSearch(query);
                     }
                     StringBuilder sb = new StringBuilder();
-                    sb.append("搜索 \"").append(query).append("\" 的结果：\n");
-                    for (int i = 0; i < Math.min(3, webResults.size()); i++) {
+                    sb.append(String.format(AppConstants.SearchConstants.SEARCH_RESULT_HEADER, query));
+                    for (int i = 0; i < Math.min(AppConstants.SearchConstants.DISPLAY_RESULT_COUNT, webResults.size()); i++) {
                         JsonNode result = webResults.get(i);
-                        sb.append(i + 1).append(". ").append(result.path("title").asText()).append("\n");
-                        sb.append("   ").append(result.path("description").asText()).append("\n");
-                        sb.append("   URL: ").append(result.path("url").asText()).append("\n");
+                        sb.append(String.format(AppConstants.SearchConstants.SEARCH_RESULT_ITEM,
+                                i + 1, result.path("title").asText(),
+                                result.path("description").asText(), result.path("url").asText()));
                     }
                     return sb.toString();
                 }
@@ -85,7 +118,13 @@ public class SearchService {
         });
     }
 
+    /**
+     * 降级处理：返回模拟搜索数据
+     * 
+     * @param query 搜索关键词
+     * @return 模拟搜索结果
+     */
     private String fallbackWebSearch(String query) {
-        return String.format("关于'%s'的搜索结果：1. 相关介绍... 2. 最新动态...（模拟数据，搜索服务暂时不可用）", query);
+        return String.format(AppConstants.SearchConstants.MOCK_SEARCH_TEMPLATE, query);
     }
 }

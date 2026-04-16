@@ -1,0 +1,15 @@
+# ===========================================
+# 生产环境配置 (prod)
+# ===========================================
+
+spring:
+  config:
+    import:
+      - classpath:config/application-datasource-prod.yml
+      - classpath:config/application-ai-prod.yml
+      - classpath:config/application-resilience-prod.yml
+      - classpath:config/application-actuator-prod.yml
+      - classpath:application-ocr.yml
+      - classpath:application-audio.yml
+      - classpath:application-file-processing.yml
+      - classpath:config/application-app-prod.yml

@@ -1,6 +1,7 @@
 package org.example.springairobot.Controller;
 
 import org.example.springairobot.PO.DTO.BatchProcessResponse;
+import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.file.UnifiedFileProcessingService;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/file")
+@RequestMapping(AppConstants.ApiPaths.FILE_BASE)
 public class FileProcessController {
 
     private final UnifiedFileProcessingService fileProcessingService;
@@ -23,7 +24,7 @@ public class FileProcessController {
     /**
      * 单文件处理
      */
-    @PostMapping("/process")
+    @PostMapping(AppConstants.ApiPaths.FILE_PROCESS)
     public String processFile(@RequestPart("file") MultipartFile file) throws Exception {
         return fileProcessingService.processFile(file);
     }
@@ -31,7 +32,7 @@ public class FileProcessController {
     /**
      * 批量文件处理
      */
-    @PostMapping("/batch")
+    @PostMapping(AppConstants.ApiPaths.FILE_BATCH)
     public BatchProcessResponse processBatchFiles(@RequestPart("files") List<MultipartFile> files) {
         return fileProcessingService.processBatchFiles(files);
     }
@@ -39,7 +40,7 @@ public class FileProcessController {
     /**
      * 处理文件并直接用于对话
      */
-    @PostMapping("/chat")
+    @PostMapping(AppConstants.ApiPaths.FILE_CHAT)
     public String chatWithFile(
             @RequestParam(required = false) String sessionId,
             @RequestParam(required = false) String userId,
@@ -47,13 +48,9 @@ public class FileProcessController {
             @RequestPart("file") MultipartFile file) throws Exception {
 
         String fileContent = fileProcessingService.processFile(file);
-        String enhancedQuestion = String.format("""
-                用户上传了一个文件，内容如下：
-                ---
-                %s
-                ---
-                用户的问题：%s
-                """, fileContent, question);
+        String enhancedQuestion = String.format(
+                AppConstants.ControllerMessages.FILE_CHAT_PROMPT_TEMPLATE,
+                fileContent, question);
 
         return chatService.chat(sessionId, userId, enhancedQuestion);
     }
@@ -61,7 +58,7 @@ public class FileProcessController {
     /**
      * 批量处理文件并结合对话
      */
-    @PostMapping("/batch-chat")
+    @PostMapping(AppConstants.ApiPaths.FILE_BATCH_CHAT)
     public String chatWithBatchFiles(
             @RequestParam(required = false) String sessionId,
             @RequestParam(required = false) String userId,
@@ -72,19 +69,15 @@ public class FileProcessController {
         StringBuilder fileContents = new StringBuilder();
         for (var result : batchResult.getResults()) {
             if (result.isSuccess()) {
-                fileContents.append("【文件: ").append(result.getFileName()).append("】\n")
-                        .append(result.getContent()).append("\n\n");
+                fileContents.append(String.format(
+                        AppConstants.ControllerMessages.FILE_CONTENT_FORMAT,
+                        result.getFileName(), result.getContent()));
             }
         }
 
-        String enhancedQuestion = String.format("""
-                用户上传了 %d 个文件，成功处理 %d 个。
-                文件内容如下：
-                ---
-                %s
-                ---
-                用户的问题：%s
-                """, batchResult.getTotalFiles(), batchResult.getSuccessCount(),
+        String enhancedQuestion = String.format(
+                AppConstants.ControllerMessages.BATCH_FILE_CHAT_PROMPT_TEMPLATE,
+                batchResult.getTotalFiles(), batchResult.getSuccessCount(),
                 fileContents.toString(), question);
 
         return chatService.chat(sessionId, userId, enhancedQuestion);

@@ -8,6 +8,7 @@ target/
 logs/
 
 /src/main/resources/application-app.yml
+/src/main/resources/config/application-app-dev.yml
 
 ### STS ###
 .apt_generated

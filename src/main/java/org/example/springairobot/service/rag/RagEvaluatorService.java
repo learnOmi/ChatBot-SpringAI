@@ -1,5 +1,6 @@
 package org.example.springairobot.service.rag;
 
+import org.example.springairobot.constants.AppConstants;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.evaluation.FactCheckingEvaluator;
 import org.springframework.ai.chat.evaluation.RelevancyEvaluator;
@@ -12,40 +13,48 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * RAG 评估服务
+ * 
+ * 对 RAG 生成的答案进行质量评估
+ * 
+ * 功能特点：
+ * - 相关性评估：答案是否与查询相关
+ * - 事实性评估：答案是否基于检索的文档，无幻觉
+ * - 可配置评估提示词
+ * - 支持单独评估和组合评估
+ * 
+ * 评估流程：
+ * 1. 相关性评估：检查答案是否回答了用户问题
+ * 2. 事实性评估：检查答案是否基于检索的文档
+ * 3. 两项都通过才认为是高质量答案
+ */
 @Service
 public class RagEvaluatorService {
+    
+    /** 相关性评估器 */
     private final RelevancyEvaluator relevancyEvaluator;
+    
+    /** 事实性评估器 */
     private final FactCheckingEvaluator factCheckingEvaluator;
 
-    public RagEvaluatorService(@Qualifier("evaluationChatClient")ChatClient chatClient) {
-        String customRelevancyPrompt = """
-            你的任务是判断以下回答是否与用户问题和提供的上下文相关。
-            
-            用户问题：{query}
-            上下文信息：{context}
-            回答内容：{response}
-            
-            回答仅用 YES 或 NO
-            """;
-
-        String customFactCheckPrompt = """
-            请检查以下陈述是否在提供的文档中有事实依据。
-            
-            文档内容：{document}
-            陈述内容：{claim}
-            
-            回答仅用 YES 或 NO
-            """;
-
-        this.relevancyEvaluator = RelevancyEvaluator.builder().promptTemplate(new PromptTemplate(customRelevancyPrompt)).chatClientBuilder(chatClient.mutate()).build();
-        this.factCheckingEvaluator = FactCheckingEvaluator.builder(chatClient.mutate()).evaluationPrompt(customFactCheckPrompt).build();
+    public RagEvaluatorService(
+            @Qualifier(AppConstants.AiConfigConstants.QUALIFIER_EVALUATION_CHAT_CLIENT) ChatClient chatClient) {
+        this.relevancyEvaluator = RelevancyEvaluator.builder()
+                .promptTemplate(new PromptTemplate(AppConstants.RagEvaluationPrompts.CUSTOM_RELEVANCY_PROMPT))
+                .chatClientBuilder(chatClient.mutate())
+                .build();
+        this.factCheckingEvaluator = FactCheckingEvaluator.builder(chatClient.mutate())
+                .evaluationPrompt(AppConstants.RagEvaluationPrompts.CUSTOM_FACT_CHECK_PROMPT)
+                .build();
     }
 
     /**
-     * 评估RAG回答的相关性和事实准确性
+     * 综合评估（相关性 + 事实性）
+     * 
      * @param userQuery 用户查询
-     * @param context 检索到的上下文
-     * @param response AI生成的响应
+     * @param context 检索的文档上下文
+     * @param response 生成的答案
      * @return 是否通过评估
      */
     public boolean evaluate(String userQuery, List<Document> context, String response) {
@@ -55,19 +64,24 @@ public class RagEvaluatorService {
                 response
         );
 
-        // 首先评估相关性
+        // 1. 相关性评估
         EvaluationResponse relevancyResponse = relevancyEvaluator.evaluate(evaluationRequest);
         if (!relevancyResponse.isPass()) {
             return false;
         }
 
-        // 然后评估事实准确性
+        // 2. 事实性评估
         EvaluationResponse factCheckingResponse = factCheckingEvaluator.evaluate(evaluationRequest);
         return factCheckingResponse.isPass();
     }
 
     /**
      * 单独评估相关性
+     * 
+     * @param userQuery 用户查询
+     * @param context 检索的文档上下文
+     * @param response 生成的答案
+     * @return 评估结果
      */
     public EvaluationResponse evaluateRelevancy(String userQuery, List<Document> context, String response) {
         EvaluationRequest request = new EvaluationRequest(userQuery, context, response);
@@ -75,7 +89,11 @@ public class RagEvaluatorService {
     }
 
     /**
-     * 单独评估事实准确性
+     * 单独评估事实性
+     * 
+     * @param context 检索的文档上下文
+     * @param response 生成的答案
+     * @return 评估结果
      */
     public EvaluationResponse evaluateFactuality(List<Document> context, String response) {
         EvaluationRequest request = new EvaluationRequest(null, context, response);
@@ -83,9 +101,11 @@ public class RagEvaluatorService {
     }
 
     /**
-     * 获取默认的"不知道"答案
+     * 获取默认兜底答案
+     * 
+     * @return 兜底答案字符串
      */
     public String getDefaultUnknownAnswer() {
-        return "抱歉，我暂时无法准确回答这个问题。";
+        return AppConstants.ChatMessages.DEFAULT_UNKNOWN_ANSWER;
     }
 }

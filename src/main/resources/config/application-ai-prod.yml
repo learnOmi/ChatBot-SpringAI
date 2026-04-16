@@ -1,0 +1,26 @@
+# ===========================================
+# AI 配置 - 生产环境
+# ===========================================
+
+spring:
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL}
+      embedding:
+        options:
+          model: ${OLLAMA_EMBED_MODEL}
+      chat:
+        options:
+          model: ${OLLAMA_CHAT_MODEL}
+          temperature: 0.5
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: never
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: false

@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.agent.AgentTool;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import org.example.springairobot.PO.Context.AgentContextHolder;
+import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.agent.SubAgentFactory;
 import org.example.springairobot.service.vision.VisionService;
 import org.springframework.ai.chat.client.ChatClient;
@@ -23,7 +24,7 @@ public class CoordinatorAgent {
     private final ConversationService conversationService;
     private final VisionService visionService;
 
-    public CoordinatorAgent(@Qualifier("coordinatorChatClient") ChatClient coordinatorChatClient,
+    public CoordinatorAgent(@Qualifier(AppConstants.AiConfigConstants.QUALIFIER_COORDINATOR_CHAT_CLIENT) ChatClient coordinatorChatClient,
                             SubAgentFactory subAgentFactory,
                             ConversationService conversationService,
                             VisionService visionService) {
@@ -40,16 +41,14 @@ public class CoordinatorAgent {
         if (image != null && !image.isEmpty()) {
             try {
                 // 调用视觉服务获取图片描述
-                String imageDescription = visionService.analyzeMedia(sessionId, userId, "请详细描述这张图片的内容", image);
+                String imageDescription = visionService.analyzeMedia(sessionId, userId,
+                        AppConstants.CoordinatorConstants.IMAGE_DESCRIPTION_PROMPT, image);
                 // 将视觉描述作为上下文注入用户输入
-                enhancedUserInput = String.format("""
-                用户上传了一张图片，视觉分析结果如下：
-                %s
-                
-                用户的问题：%s
-                """, imageDescription, userInput);
+                enhancedUserInput = String.format(AppConstants.CoordinatorConstants.IMAGE_CONTEXT_TEMPLATE,
+                        imageDescription, userInput);
             } catch (IOException e) {
-                enhancedUserInput = userInput + "\n（图片分析失败：" + e.getMessage() + "）";
+                enhancedUserInput = userInput + String.format(
+                        AppConstants.CoordinatorConstants.IMAGE_ANALYSIS_FAILED_TEMPLATE, e.getMessage());
             }
         }
 
@@ -73,7 +72,7 @@ public class CoordinatorAgent {
 
             // 构建协调者
             ReactAgent coordinator = ReactAgent.builder()
-                    .name("coordinator")
+                    .name(AppConstants.CoordinatorConstants.COORDINATOR_AGENT_NAME)
                     .chatClient(coordinatorChatClient)
                     .tools(agentTools)
                     .build();
@@ -82,7 +81,7 @@ public class CoordinatorAgent {
             try {
                 response = coordinator.call(enhancedUserInput).getText();
             } catch (GraphRunnerException e) {
-                response = "智能体执行过程中发生错误: " + e.getMessage();
+                response = AppConstants.CoordinatorConstants.ERROR_AGENT_EXECUTION_FAILED + e.getMessage();
             }
 
             conversationService.savePair(effectiveSessionId, userId, enhancedUserInput, response, null);

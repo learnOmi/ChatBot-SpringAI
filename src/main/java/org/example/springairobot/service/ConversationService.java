@@ -4,6 +4,7 @@ import org.example.springairobot.DAO.ConversationMessageRepository;
 import org.example.springairobot.DAO.ConversationSessionRepository;
 import org.example.springairobot.PO.Tables.ConversationMessage;
 import org.example.springairobot.PO.Tables.ConversationSession;
+import org.example.springairobot.constants.AppConstants;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -17,9 +18,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 会话服务
+ * 
+ * 管理对话会话和消息的持久化
+ * 
+ * 功能特点：
+ * - 创建和管理对话会话
+ * - 保存和检索对话消息
+ * - 支持会话历史加载
+ * - 支持按用户查询会话列表
+ */
 @Service
 @Transactional
 public class ConversationService {
+    
     private ConversationSessionRepository sessionRepo;
     private ConversationMessageRepository messageRepo;
 
@@ -33,18 +46,33 @@ public class ConversationService {
         this.messageRepo = messageRepo;
     }
 
-    // 创建新会话（生成 UUID）
+    /**
+     * 创建新会话
+     * 
+     * @param userId 用户ID
+     * @param title 会话标题，可为null
+     * @return 新创建的会话ID
+     */
     public String createSession(String userId, String title) {
         String id = UUID.randomUUID().toString();
         ConversationSession session = new ConversationSession();
         session.setId(id);
         session.setUserId(userId);
-        session.setTitle(title != null ? title : "新对话");
+        session.setTitle(title != null ? title : AppConstants.ConversationConstants.DEFAULT_SESSION_TITLE);
         sessionRepo.save(session);
         return id;
     }
 
-    // 获取或创建会话
+    /**
+     * 获取或创建会话
+     * 
+     * 如果sessionId存在且有效，返回该会话；否则创建新会话
+     * 
+     * @param sessionId 会话ID，可为null
+     * @param userId 用户ID
+     * @param title 会话标题
+     * @return 有效会话ID
+     */
     public String getOrCreateSession(String sessionId, String userId, String title) {
         if (sessionId != null && sessionRepo.existsById(sessionId)) {
             return sessionId;
@@ -52,7 +80,15 @@ public class ConversationService {
         return createSession(userId, title);
     }
 
-    // 保存消息
+    /**
+     * 保存单条消息
+     * 
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param role 角色（user/assistant）
+     * @param content 消息内容
+     * @param tokensUsed 使用的token数
+     */
     public void saveMessage(String sessionId, String userId, String role, String content, Integer tokensUsed) {
         ConversationMessage msg = new ConversationMessage();
         msg.setSessionId(sessionId);
@@ -69,14 +105,29 @@ public class ConversationService {
         });
     }
 
-    // 保存一对消息（用户和助手），通常在响应完成后调用
+    /**
+     * 保存一对消息（用户消息和助手回复）
+     * 
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param userMessage 用户消息
+     * @param assistantMessage 助手回复
+     * @param tokensUsed 使用的token数
+     */
     public void savePair(String sessionId, String userId, String userMessage, String assistantMessage, Integer tokensUsed) {
-        saveMessage(sessionId, userId, "user", userMessage, tokensUsed);
-        saveMessage(sessionId, userId, "assistant", assistantMessage, tokensUsed);
+        saveMessage(sessionId, userId, AppConstants.ConversationConstants.ROLE_USER, userMessage, tokensUsed);
+        saveMessage(sessionId, userId, AppConstants.ConversationConstants.ROLE_ASSISTANT, assistantMessage, tokensUsed);
     }
 
     /**
-     * 保存消息并返回持久化后的消息对象（用于获取自增ID）
+     * 保存消息并返回持久化后的消息对象
+     * 
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param role 角色
+     * @param content 消息内容
+     * @param tokensUsed 使用的token数
+     * @return 持久化后的消息对象
      */
     public ConversationMessage saveMessageAndReturn(String sessionId, String userId, String role, String content, Integer tokensUsed) {
         ConversationMessage msg = new ConversationMessage();
@@ -94,42 +145,70 @@ public class ConversationService {
         return saved;
     }
 
-    // 获取会话历史（用于构建对话上下文）
+    /**
+     * 获取会话历史消息
+     * 
+     * @param sessionId 会话ID
+     * @return 消息列表
+     */
     public List<ConversationMessage> getHistory(String sessionId) {
         return messageRepo.findBySessionIdOrderByCreatedAtAsc(sessionId);
     }
 
-    // 获取用户所有历史消息（按 userId）
+    /**
+     * 获取用户所有历史消息
+     * 
+     * @param userId 用户ID
+     * @return 消息列表
+     */
     public List<ConversationMessage> getHistoryByUserId(String userId) {
         return messageRepo.findByUserIdOrderByCreatedAtAsc(userId);
     }
 
-    // 加载历史消息（转换为 Spring AI Message 列表）
+    /**
+     * 加载历史消息（转换为Spring AI Message格式）
+     * 
+     * @param sessionId 会话ID
+     * @return Spring AI Message列表
+     */
     public List<Message> loadHistoryMessages(String sessionId) {
         List<ConversationMessage> messages = getHistory(sessionId);
         List<Message> springMessages = new ArrayList<>();
         for (ConversationMessage msg : messages) {
-            if ("user".equals(msg.getRole())) {
+            if (AppConstants.ConversationConstants.ROLE_USER.equals(msg.getRole())) {
                 springMessages.add(new UserMessage(msg.getContent()));
-            } else if ("assistant".equals(msg.getRole())) {
+            } else if (AppConstants.ConversationConstants.ROLE_ASSISTANT.equals(msg.getRole())) {
                 springMessages.add(new AssistantMessage(msg.getContent()));
             }
         }
         return springMessages;
     }
 
-    // 删除会话及其所有消息
+    /**
+     * 删除会话及其所有消息
+     * 
+     * @param sessionId 会话ID
+     */
     public void deleteSession(String sessionId) {
         messageRepo.deleteBySessionId(sessionId);
         sessionRepo.deleteById(sessionId);
     }
 
-    // 获取所有会话列表
+    /**
+     * 获取所有会话列表
+     * 
+     * @return 会话列表，按更新时间降序
+     */
     public List<ConversationSession> listSessions() {
         return sessionRepo.findAll(Sort.by(Sort.Direction.DESC, "updatedAt"));
     }
 
-    // 列出用户的所有会话
+    /**
+     * 列出用户的所有会话
+     * 
+     * @param userId 用户ID
+     * @return 会话列表，按更新时间降序
+     */
     public List<ConversationSession> listSessionsByUser(String userId) {
         return sessionRepo.findByUserIdOrderByUpdatedAtDesc(userId);
     }
