@@ -5,6 +5,9 @@ spring:
     import:
       - classpath:application-datasource.yml
       - classpath:application-ai.yml
+      - classpath:application-ocr.yml
+      - classpath:application-audio.yml
+      - classpath:application-file-processing.yml
       - classpath:application-actuator.yml
       - classpath:application-resilience.yml
       - classpath:application-app.yml

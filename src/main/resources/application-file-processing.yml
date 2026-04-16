@@ -1,0 +1,6 @@
+# 文件处理配置
+file-processing:
+  thread-pool:
+    core-size: 4                           # 核心线程数
+    max-size: 8                            # 最大线程数
+    queue-capacity: 100                    # 队列容量

@@ -1,0 +1,5 @@
+# OCR 配置
+ocr:
+  tesseract:
+    datapath: C:\Program Files\Tesseract-OCR\tessdata    # Tesseract tessdata 目录路径，留空则使用默认
+    language: chi_sim+eng                  # 识别语言
