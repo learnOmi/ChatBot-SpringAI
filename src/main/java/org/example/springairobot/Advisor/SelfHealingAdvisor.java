@@ -11,17 +11,17 @@ import org.springframework.stereotype.Component;
 
 /**
  * 自修复顾问
- * 在LLM生成答案且评估完成后，根据评估结果决定是否进行修复
- * 修复策略：查询改写（retrieval失败）或重新生成（generation失败）
- * 执行顺序：应在评估顾问之后
+ * 在LLM生成答案且评估完成后，根据评估结果决定修复策略
+ * 只标记修复策略和改写后的查询，不自行重试
+ * 重试由 SelfHealingRecursiveAdvisor 统一控制
  */
 @Component
 public class SelfHealingAdvisor implements CallAdvisor {
 
-    private final ChatClient ragChatClient;
+    private final ChatClient queryRewriteClient;
 
-    public SelfHealingAdvisor(@Qualifier("evaluationChatClient") ChatClient ragChatClient) {
-        this.ragChatClient = ragChatClient;
+    public SelfHealingAdvisor(@Qualifier("evaluationChatClient") ChatClient queryRewriteClient) {
+        this.queryRewriteClient = queryRewriteClient;
     }
 
     @Override
@@ -57,39 +57,21 @@ public class SelfHealingAdvisor implements CallAdvisor {
             return response;
         }
 
-        // 根据失败原因选择修复策略
+        // 根据失败原因选择修复策略，只标记不重试
         String failReason = evalResult.getFailReason();
         String originalQuery = (String) request.context().get("originalQuery");
-        boolean hasToolCalls = request.context().containsKey("toolResult");
 
-        String healingStrategy;
         if ("generation".equals(failReason)) {
-            healingStrategy = "regenerate";
+            request.context().put("healingStrategy", "regenerate");
         } else {
-            healingStrategy = "query_rewrite";
+            request.context().put("healingStrategy", "query_rewrite");
             String rewritten = rewriteQuery(originalQuery);
             request.context().put("rewrittenQuery", rewritten);
-            if (hasToolCalls) {
-                request.context().put("replayTools", true);
-            }
         }
 
-        request.context().put("healingStrategy", healingStrategy);
-        request.context().put("retryCount", retryCount + 1);
-        request.context().put("healed", true);
+        request.context().put("needsHealing", true);
 
-        // 如果是查询改写，使用改写后的查询重新发起请求
-        if ("query_rewrite".equals(healingStrategy)) {
-            String rewrittenQuery = (String) request.context().get("rewrittenQuery");
-            ChatClientRequest newRequest = ChatClientRequest.builder()
-                    .prompt(request.prompt().augmentUserMessage(rewrittenQuery))
-                    .context(request.context())
-                    .build();
-            return chain.nextCall(newRequest);
-        }
-
-        // 重新生成策略：用相同请求再次调用链
-        return chain.nextCall(request);
+        return response;
     }
 
     private String rewriteQuery(String originalQuery) {
@@ -99,6 +81,6 @@ public class SelfHealingAdvisor implements CallAdvisor {
                 
                 原始问题：%s
                 改写后的查询：""".formatted(originalQuery);
-        return ragChatClient.prompt().user(prompt).call().content().trim();
+        return queryRewriteClient.prompt().user(prompt).call().content().trim();
     }
 }

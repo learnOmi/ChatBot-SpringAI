@@ -49,8 +49,8 @@ public class EvaluationAdvisor implements CallAdvisor {
                 .getOrDefault(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT, Collections.emptyList());
         String answer = response.chatResponse().getResult().getOutput().getText();
 
-        boolean relevancyPass = true;
-        boolean factualityPass = true;
+        boolean relevancyPass = false;
+        boolean factualityPass = false;
         String failReason = "none";
 
         // 评估回答质量
@@ -68,6 +68,7 @@ public class EvaluationAdvisor implements CallAdvisor {
                 Document pseudoDoc = new Document(toolResult);
                 try {
                     factualityPass = evaluatorService.evaluateFactuality(List.of(pseudoDoc), answer).isPass();
+                    relevancyPass = true;
                 } catch (Exception e) {
                     failReason = "evaluation_error";
                 }

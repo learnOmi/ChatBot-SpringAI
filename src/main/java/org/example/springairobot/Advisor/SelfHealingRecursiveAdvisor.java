@@ -1,10 +1,14 @@
 package org.example.springairobot.Advisor;
 
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 递归自修复顾问
@@ -14,6 +18,15 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SelfHealingRecursiveAdvisor implements CallAdvisor {
+
+    private static final String RETRY_COUNT_KEY = "retryCount";
+    private static final String MAX_RETRIES_KEY = "maxRetries";
+
+    private ChatClient.Builder retryBuilder;
+
+    public void setRetryBuilder(ChatClient.Builder retryBuilder) {
+        this.retryBuilder = retryBuilder;
+    }
 
     @Override
     public String getName() {
@@ -27,46 +40,95 @@ public class SelfHealingRecursiveAdvisor implements CallAdvisor {
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        // 初始化重试参数
-        request.context().put("maxRetries", 2);
-        request.context().put("retryCount", 0);
-
-        ChatClientResponse response = null;
-        boolean pass = false;
-        int iteration = 0;
-        int maxIterations = 3;
-
-        // 循环尝试：先生成答案，再检查评估结果，决定是否重试
-        while (iteration < maxIterations) {
-            // 执行链：生成答案 → 评估 → 自修复判断
-            response = chain.nextCall(request);
-
-            // 检查评估结果
-            Object evalResultObj = request.context().get("evaluationResult");
-            if (evalResultObj != null) {
-                try {
-                    pass = (boolean) evalResultObj.getClass().getMethod("isPass").invoke(evalResultObj);
-                } catch (Exception e) {
-                    pass = false;
-                }
-            }
-
-            // 评估通过，跳出循环
-            if (pass) {
-                break;
-            }
-
-            // 检查是否已标记兜底（重试次数耗尽）
-            Boolean fallback = (Boolean) request.context().get("fallback");
-            if (fallback != null && fallback) {
-                break;
-            }
-
-            // 增加重试次数，继续循环
-            iteration++;
-            request.context().put("retryCount", iteration);
+        int retryCount = (Integer) request.context().getOrDefault(RETRY_COUNT_KEY, 0);
+        if (retryCount == 0) {
+            request.context().put(MAX_RETRIES_KEY, 2);
         }
 
-        return response;
+        ChatClientResponse response;
+        if (retryCount == 0) {
+            response = chain.nextCall(request);
+        } else {
+            request = applyHealingStrategy(request);
+            response = executeRetry(request);
+        }
+
+        boolean pass = checkEvaluationPass(request);
+
+        if (pass) {
+            return response;
+        }
+
+        Boolean fallback = (Boolean) request.context().get("fallback");
+        if (fallback != null && fallback) {
+            return response;
+        }
+
+        int currentRetry = (Integer) request.context().getOrDefault(RETRY_COUNT_KEY, 0);
+        int maxRetries = (Integer) request.context().getOrDefault(MAX_RETRIES_KEY, 2);
+
+        if (currentRetry >= maxRetries) {
+            request.context().put("fallback", true);
+            return response;
+        }
+
+        request.context().put(RETRY_COUNT_KEY, currentRetry + 1);
+
+        return adviseCall(request, chain);
+    }
+
+    private boolean checkEvaluationPass(ChatClientRequest request) {
+        Object evalResultObj = request.context().get("evaluationResult");
+        if (evalResultObj != null) {
+            try {
+                return (boolean) evalResultObj.getClass().getMethod("isPass").invoke(evalResultObj);
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ChatClientRequest applyHealingStrategy(ChatClientRequest request) {
+        Boolean needsHealing = (Boolean) request.context().get("needsHealing");
+        if (needsHealing != null && needsHealing) {
+            String strategy = (String) request.context().get("healingStrategy");
+            if ("query_rewrite".equals(strategy)) {
+                String rewrittenQuery = (String) request.context().get("rewrittenQuery");
+                if (rewrittenQuery != null) {
+                    return ChatClientRequest.builder()
+                            .prompt(request.prompt().augmentUserMessage(rewrittenQuery))
+                            .context(request.context())
+                            .build();
+                }
+            }
+            request.context().remove("needsHealing");
+            request.context().remove("healingStrategy");
+        }
+        return request;
+    }
+
+    private ChatClientResponse executeRetry(ChatClientRequest request) {
+        if (retryBuilder == null) {
+            throw new IllegalStateException("retryBuilder not configured. Call setRetryBuilder() during initialization.");
+        }
+
+        ChatClient retryClient = retryBuilder.build();
+        String userText = request.prompt().getUserMessage().getText();
+
+        ChatResponse chatResponse = retryClient.prompt()
+                .user(userText)
+                .advisors(a -> {
+                    for (Map.Entry<String, Object> entry : request.context().entrySet()) {
+                        if (!entry.getKey().equals(RETRY_COUNT_KEY)) {
+                            a.param(entry.getKey(), entry.getValue());
+                        }
+                    }
+                    a.param(RETRY_COUNT_KEY, request.context().get(RETRY_COUNT_KEY));
+                })
+                .call()
+                .chatResponse();
+
+        return new ChatClientResponse(chatResponse, Map.of());
     }
 }

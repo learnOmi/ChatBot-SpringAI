@@ -169,7 +169,23 @@ public class AiConfig {
                                     EvaluationAdvisor evaluationAdvisor,
                                     SelfHealingAdvisor selfHealingAdvisor,
                                     SelfHealingRecursiveAdvisor recursiveAdvisor) {
-        return builder
+        ChatClient.Builder retryBuilder = builder.clone()
+                .defaultSystem("你是一个专业的知识库回答助手。" +
+                        "返回结果请用中文格式回答。" +
+                        "不要包含任何无关信息，禁止瞎编答案。")
+                .defaultAdvisors(
+                    memoryAdvisor,
+                    ragAdvisor,
+                    evaluationAdvisor,
+                    selfHealingAdvisor
+                );
+        
+        recursiveAdvisor.setRetryBuilder(retryBuilder);
+        
+        return builder.clone()
+                .defaultSystem("你是一个专业的知识库回答助手。" +
+                        "返回结果请用中文格式回答。" +
+                        "不要包含任何无关信息，禁止瞎编答案。")
                 .defaultAdvisors(
                     memoryAdvisor,
                     recursiveAdvisor,
