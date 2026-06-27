@@ -1,6 +1,7 @@
 package org.example.springairobot.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.example.springairobot.PO.DTO.EntityExtraction;
 import org.example.springairobot.PO.DTO.RagAnswer;
 import org.example.springairobot.constants.AppConstants;
@@ -30,6 +31,7 @@ import java.util.List;
  * 所有对话都支持会话记忆，自动保存对话历史
  */
 @Service
+@Slf4j
 public class ChatService {
     
     private final ChatClient chatClient;
@@ -265,7 +267,7 @@ public class ChatService {
             String entitiesJson = objectMapper.writeValueAsString(entities);
             conversationService.saveMessage(effectiveSessionId, userId, AppConstants.ChatMessages.MESSAGE_TYPE_ASSISTANT, entitiesJson, null);
         } catch (Exception e) {
-            System.err.println(AppConstants.ChatServiceConstants.ERROR_PERSIST_ENTITIES_FAILED + e.getMessage());
+            log.error("持久化实体抽取结果失败", e);
         }
 
         return entities;

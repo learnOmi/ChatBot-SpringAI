@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useState } from 'react'
 import { useUserStore } from '../stores/userStore'
 import { useSessionStore } from '../stores/sessionStore'
 import { useMessageStore } from '../stores/messageStore'
@@ -25,7 +25,7 @@ interface UseSendMessageReturn {
 
 export function useSendMessage(): UseSendMessageReturn {
   const { stream } = useStreaming()
-  const sendingRef = useRef(false)
+  const [isSending, setIsSending] = useState(false)
 
   const addMessage = useMessageStore.getState().addMessage
   const updateStreamingText = useMessageStore.getState().updateStreamingText
@@ -33,8 +33,8 @@ export function useSendMessage(): UseSendMessageReturn {
 
   const sendMessage = useCallback(
     async (message: string, mode: ChatMode) => {
-      if (sendingRef.current) return
-      sendingRef.current = true
+      if (isSending) return
+      setIsSending(true)
 
       const userId = localStorage.getItem('springairobot_userid') || null
       const activeSessionId = useSessionStore.getState().activeSessionId
@@ -164,14 +164,14 @@ export function useSendMessage(): UseSendMessageReturn {
           isStreaming: false,
         })
       } finally {
-        sendingRef.current = false
+        setIsSending(false)
       }
     },
-    [stream, addMessage, updateStreamingText, finishStreaming]
+    [stream, addMessage, updateStreamingText, finishStreaming, isSending]
   )
 
   return {
     sendMessage,
-    isSending: sendingRef.current,
+    isSending,
   }
 }

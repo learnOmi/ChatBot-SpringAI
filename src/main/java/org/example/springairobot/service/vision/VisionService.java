@@ -1,5 +1,6 @@
 package org.example.springairobot.service.vision;
 
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.example.springairobot.DAO.MessageAttachmentRepository;
 import org.example.springairobot.PO.Tables.ConversationMessage;
@@ -31,6 +32,7 @@ import java.util.Base64;
  * - 支持会话持久化
  */
 @Service
+@Slf4j
 public class VisionService {
 
     private final ChatClient visionChatClient;
@@ -127,10 +129,10 @@ public class VisionService {
             return response;
 
         } catch (IOException e) {
-            System.err.println(AppConstants.VisionMessages.ERROR_FILE_PROCESSING_FAILED + e.getMessage());
+            log.error("文件处理失败", e);
             throw new IOException(AppConstants.VisionMessages.ERROR_FILE_CORRUPTED, e);
         } catch (Exception e) {
-            System.err.println(AppConstants.VisionMessages.ERROR_MULTIMODEL_CALL_FAILED + e.getMessage());
+            log.error("调用多模态模型失败", e);
             throw new RuntimeException(AppConstants.VisionMessages.ERROR_AI_SERVICE_UNAVAILABLE, e);
         }
     }

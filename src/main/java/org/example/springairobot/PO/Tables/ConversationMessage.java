@@ -15,10 +15,10 @@ import java.time.LocalDateTime;
 public class ConversationMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // 声明一个Long类型的id属性，作为实体类的主键字段
+    private Long id;
     private String sessionId;
-    private String userId;         // 用户ID（长期记忆、用户画像）
-    private String role;   // user / assistant
+    private String userId;
+    private String role;
     @Column(columnDefinition = "TEXT")
     private String content;
     private Integer tokensUsed;

@@ -1,5 +1,6 @@
 package org.example.springairobot.service.memory;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.springairobot.DAO.UserProfileRepository;
 import org.example.springairobot.PO.DTO.UserProfileExtraction;
 import org.example.springairobot.PO.Tables.ConversationMessage;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
  * - 避免重复存储相似内容
  */
 @Service
+@Slf4j
 public class MemoryEnhancementService {
 
     /** 向量存储，用于长期记忆 */
@@ -122,7 +124,7 @@ public class MemoryEnhancementService {
             profile.setSummary(extracted.getSummary());
             userProfileRepo.save(profile);
         } catch (Exception e) {
-            System.err.println(AppConstants.MemoryConstants.ERROR_PROFILE_EXTRACTION_FAILED + e.getMessage());
+            log.error("提取用户画像失败", e);
         }
 
         // 存储长期记忆

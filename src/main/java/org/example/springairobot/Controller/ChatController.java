@@ -7,8 +7,6 @@ import org.example.springairobot.PO.Tables.ConversationSession;
 import org.example.springairobot.constants.AppConstants;
 import org.example.springairobot.service.ChatService;
 import org.example.springairobot.service.ConversationService;
-import org.example.springairobot.service.memory.MemoryEnhancementService;
-import org.example.springairobot.service.vision.VisionService;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
@@ -31,7 +29,7 @@ public class ChatController {
     private final ChatService chatService;
     private final ConversationService conversationService;
 
-    public ChatController(ChatService chatService, ConversationService conversationService, VisionService visionService, MemoryEnhancementService memoryEnhancementService) {
+    public ChatController(ChatService chatService, ConversationService conversationService) {
         this.chatService = chatService;
         this.conversationService = conversationService;
     }

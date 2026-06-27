@@ -1,5 +1,6 @@
 package org.example.springairobot.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.springairobot.DAO.ConversationMessageRepository;
 import org.example.springairobot.DAO.ConversationSessionRepository;
 import org.example.springairobot.PO.Tables.ConversationMessage;
@@ -8,7 +9,6 @@ import org.example.springairobot.constants.AppConstants;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +20,9 @@ import java.util.UUID;
 
 /**
  * 会话服务
- * 
+ *
  * 管理对话会话和消息的持久化
- * 
+ *
  * 功能特点：
  * - 创建和管理对话会话
  * - 保存和检索对话消息
@@ -30,21 +30,12 @@ import java.util.UUID;
  * - 支持按用户查询会话列表
  */
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class ConversationService {
-    
-    private ConversationSessionRepository sessionRepo;
-    private ConversationMessageRepository messageRepo;
 
-    @Autowired
-    public void setSessionRepo(ConversationSessionRepository sessionRepo) {
-        this.sessionRepo = sessionRepo;
-    }
-
-    @Autowired
-    public void setMessageRepo(ConversationMessageRepository messageRepo) {
-        this.messageRepo = messageRepo;
-    }
+    private final ConversationSessionRepository sessionRepo;
+    private final ConversationMessageRepository messageRepo;
 
     /**
      * 创建新会话

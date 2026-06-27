@@ -2,6 +2,7 @@ package org.example.springairobot.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.example.springairobot.DAO.KnowledgeBaseMetadataRepository;
 import org.example.springairobot.PO.Tables.KnowledgeBaseMetadata;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
  * - 自动分割长文本为合适的块大小
  */
 @Component
+@Slf4j
 public class IngestionService {
     
     private final VectorStore vectorStore;
@@ -111,8 +113,7 @@ public class IngestionService {
                 metadataRepo.save(meta);
             }
         } catch (Exception e) {
-            System.err.println(AppConstants.IngestionConstants.LOG_ERROR + e.getMessage());
-            e.printStackTrace();
+            log.error("知识库处理失败", e);
         }
     }
 
